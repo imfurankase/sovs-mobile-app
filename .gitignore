@@ -3,7 +3,7 @@ node_modules/
 
 # expo
 .expo/
-dist/
+# dist/  # Commented out to allow deploying dist folder if needed
 web-build/
 expo-env.d.ts
 
