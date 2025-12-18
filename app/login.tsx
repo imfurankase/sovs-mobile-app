@@ -20,8 +20,8 @@ import {
   CheckCircle2,
   Languages,
 } from 'lucide-react-native';
-import { sendOTP, verifyOTP } from '@/services/mockOTP';
-import { getUserByPhoneOrEmail } from '@/services/mockUserDB';
+import { sendOTP, verifyOTP } from '@/services/auth';
+import { usersAPI } from '@/services/api';
 import { useTranslation } from '@/contexts/LanguageContext';
 
 export default function LoginScreen() {
@@ -54,7 +54,8 @@ export default function LoginScreen() {
     setIsLoading(true);
 
     try {
-      const user = await getUserByPhoneOrEmail(phoneOrEmail.trim());
+      // Check if user exists in users table
+      const user = await usersAPI.getByPhoneOrEmail(phoneOrEmail.trim());
 
       if (!user) {
         Alert.alert(t('common.error'), t('login.noAccountFound'));
@@ -62,6 +63,7 @@ export default function LoginScreen() {
         return;
       }
 
+      // Send OTP via Supabase Auth
       const result = await sendOTP(phoneOrEmail.trim());
 
       if (result.success) {
@@ -72,8 +74,8 @@ export default function LoginScreen() {
       } else {
         Alert.alert(t('common.error'), result.error || t('common.error'));
       }
-    } catch (error) {
-      Alert.alert(t('common.error'), t('common.error'));
+    } catch (error: any) {
+      Alert.alert(t('common.error'), error.message || t('common.error'));
     } finally {
       setIsLoading(false);
     }
@@ -98,8 +100,8 @@ export default function LoginScreen() {
           result.error || t('common.error')
         );
       }
-    } catch (error) {
-      Alert.alert(t('common.error'), t('common.error'));
+    } catch (error: any) {
+      Alert.alert(t('common.error'), error.message || t('common.error'));
     } finally {
       setIsLoading(false);
     }

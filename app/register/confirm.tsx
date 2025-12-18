@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { StyleSheet, Text, View, Pressable, Alert, ActivityIndicator, ScrollView } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { CheckCircle2, User, Calendar, Phone, Mail, Shield, Sparkles, Languages } from 'lucide-react-native';
-import { createVoterAccount } from '@/services/mockUserDB';
+import { registerUser } from '@/services/auth';
 import { useTranslation } from '@/contexts/LanguageContext';
 
 export default function ConfirmRegistrationScreen() {
@@ -28,7 +28,14 @@ export default function ConfirmRegistrationScreen() {
     setIsCreating(true);
 
     try {
-      const result = await createVoterAccount(userData);
+      // Register user with Supabase Auth and add to users table
+      const result = await registerUser({
+        phoneNumber: userData.phoneNumber,
+        email: userData.email || undefined,
+        name: userData.firstName,
+        surname: userData.lastName,
+        dateOfBirth: userData.dateOfBirth,
+      });
 
       if (result.success) {
         router.replace('/register/success');
@@ -36,8 +43,8 @@ export default function ConfirmRegistrationScreen() {
         Alert.alert(t('common.error'), result.error || t('common.error'));
         setIsCreating(false);
       }
-    } catch (error) {
-      Alert.alert(t('common.error'), t('common.error'));
+    } catch (error: any) {
+      Alert.alert(t('common.error'), error.message || t('common.error'));
       setIsCreating(false);
     }
   };

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, TextInput, Pressable, Alert, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Database, User, Calendar, Phone, Mail, ArrowRight, Languages } from 'lucide-react-native';
-import { fetchGovernmentData } from '@/services/mockGovernmentDB';
+import { governmentDBAPI } from '@/services/api';
 import { useTranslation } from '@/contexts/LanguageContext';
 
 interface GovernmentData {
@@ -37,16 +37,24 @@ export default function GovernmentDataScreen() {
     setError(null);
 
     try {
-      const governmentData = await fetchGovernmentData(nationalIdNumber);
+      const governmentData = await governmentDBAPI.getByNationalId(nationalIdNumber);
 
       if (governmentData) {
-        setData(governmentData);
-        setEmail(governmentData.email || '');
+        // Map the government_db schema to our expected format
+        const mappedData: GovernmentData = {
+          firstName: governmentData.name,
+          lastName: governmentData.surname,
+          dateOfBirth: governmentData.dob,
+          phoneNumber: governmentData.phone_number,
+          email: '', // Government DB doesn't have email
+        };
+        setData(mappedData);
+        setEmail('');
       } else {
         setError(t('registration.noRecordFound'));
       }
-    } catch (err) {
-      setError(t('common.error'));
+    } catch (err: any) {
+      setError(err.message || t('common.error'));
     } finally {
       setIsLoading(false);
     }
