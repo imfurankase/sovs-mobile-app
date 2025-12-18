@@ -15,26 +15,27 @@ export interface DiditVerificationResponse {
   request_id?: string;
   status?: string;
   data?: {
-    document_type?: string;
-    document_number?: string;
-    first_name?: string;
-    last_name?: string;
-    full_name?: string;
-    date_of_birth?: string;
-    age?: number;
-    expiration_date?: string;
-    date_of_issue?: string;
-    gender?: string;
-    address?: string;
-    place_of_birth?: string;
-    nationality?: string;
-    issuing_state?: string;
-    issuing_state_name?: string;
-    portrait_image?: string;
+    document_type?: string | null;
+    document_number?: string | null;
+    first_name?: string | null;
+    last_name?: string | null;
+    full_name?: string | null;
+    date_of_birth?: string | null;
+    age?: number | null;
+    expiration_date?: string | null;
+    date_of_issue?: string | null;
+    gender?: string | null;
+    address?: string | null;
+    place_of_birth?: string | null;
+    nationality?: string | null;
+    issuing_state?: string | null;
+    issuing_state_name?: string | null;
+    portrait_image?: string | null;
   };
   warnings?: any[];
   critical_warnings?: boolean;
-  error?: string;
+  has_critical_data?: boolean;
+  error?: string | null;
 }
 
 /**

@@ -92,47 +92,19 @@ export default function IdentityVerificationScreen() {
               performDocumentLiveness: false,
             });
 
-            if (result.success && result.data) {
-              setIsVerifying(false);
-              
-              // Check for critical warnings
-              if (result.critical_warnings) {
-                Alert.alert(
-                  t('registration.verificationFailed'),
-                  'Some critical information could not be detected from the document. Please ensure the image is clear and try again.',
-                  [
-                    {
-                      text: t('registration.tryAgain'),
-                      onPress: () => {
-                        setCaptureStep('selfie');
-                        setSelfieUri(null);
-                        setIdUri(null);
-                        setFacing('front');
-                      },
-                    },
-                  ]
-                );
-                return;
-              }
+            setIsVerifying(false);
 
-              // Navigate to confirmation screen with Didit data
-              router.push({
-                pathname: '/register/confirm',
-                params: {
-                  firstName: result.data.first_name || '',
-                  lastName: result.data.last_name || '',
-                  dateOfBirth: result.data.date_of_birth || '',
-                  phoneNumber: '', // Will need to be entered separately or from document
-                  email: '', // Will need to be entered separately
-                  documentNumber: result.data.document_number || '',
-                  diditData: JSON.stringify(result.data), // Store full Didit response
-                },
-              });
-            } else {
-              setIsVerifying(false);
+            // Check if verification was successful
+            if (!result.success) {
+              // Verification failed - show error message
+              const errorMessage = result.error || 
+                (result.critical_warnings 
+                  ? 'Could not extract required information from the document. Please ensure the image is clear and all text is visible.'
+                  : t('registration.verificationFailedMessage'));
+              
               Alert.alert(
                 t('registration.verificationFailed'),
-                result.error || t('registration.verificationFailedMessage'),
+                errorMessage,
                 [
                   {
                     text: t('registration.tryAgain'),
@@ -145,7 +117,106 @@ export default function IdentityVerificationScreen() {
                   },
                 ]
               );
+              return;
             }
+
+            // Check if we have critical data (name, DOB, document number)
+            if (!result.has_critical_data || !result.data) {
+              Alert.alert(
+                t('registration.verificationFailed'),
+                'Required information (name, date of birth, or document number) could not be extracted from the document. Please ensure the image is clear and try again.',
+                [
+                  {
+                    text: t('registration.tryAgain'),
+                    onPress: () => {
+                      setCaptureStep('selfie');
+                      setSelfieUri(null);
+                      setIdUri(null);
+                      setFacing('front');
+                    },
+                  },
+                ]
+              );
+              return;
+            }
+
+            // Check if status is Declined
+            if (result.status === 'Declined') {
+              Alert.alert(
+                t('registration.verificationFailed'),
+                'Document verification was declined. Please ensure your ID is valid, not expired, and the image is clear.',
+                [
+                  {
+                    text: t('registration.tryAgain'),
+                    onPress: () => {
+                      setCaptureStep('selfie');
+                      setSelfieUri(null);
+                      setIdUri(null);
+                      setFacing('front');
+                    },
+                  },
+                ]
+              );
+              return;
+            }
+
+            // Check for critical warnings even if success is true
+            if (result.critical_warnings) {
+              Alert.alert(
+                t('registration.verificationFailed'),
+                'Some critical information could not be detected from the document. Please ensure the image is clear and try again.',
+                [
+                  {
+                    text: t('registration.tryAgain'),
+                    onPress: () => {
+                      setCaptureStep('selfie');
+                      setSelfieUri(null);
+                      setIdUri(null);
+                      setFacing('front');
+                    },
+                  },
+                ]
+              );
+              return;
+            }
+
+            // Success! Navigate to confirmation screen with Didit data
+            const firstName = result.data.first_name || '';
+            const lastName = result.data.last_name || '';
+            const dateOfBirth = result.data.date_of_birth || '';
+
+            // Validate that we have the minimum required data
+            if (!firstName || !lastName || !dateOfBirth) {
+              Alert.alert(
+                t('registration.verificationFailed'),
+                'Could not extract name or date of birth from the document. Please try again with a clearer image.',
+                [
+                  {
+                    text: t('registration.tryAgain'),
+                    onPress: () => {
+                      setCaptureStep('selfie');
+                      setSelfieUri(null);
+                      setIdUri(null);
+                      setFacing('front');
+                    },
+                  },
+                ]
+              );
+              return;
+            }
+
+            router.push({
+              pathname: '/register/confirm',
+              params: {
+                firstName: firstName,
+                lastName: lastName,
+                dateOfBirth: dateOfBirth,
+                phoneNumber: '', // Will need to be entered separately
+                email: '', // Will need to be entered separately
+                documentNumber: result.data.document_number || '',
+                diditData: JSON.stringify(result.data), // Store full Didit response
+              },
+            });
           } catch (error: any) {
             console.error('Verification error:', error);
             setIsVerifying(false);
