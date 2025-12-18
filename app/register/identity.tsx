@@ -2,11 +2,17 @@ import { useState, useRef } from 'react';
 import { StyleSheet, Text, View, Pressable, Alert, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
-import { Camera, Shield, Loader } from 'lucide-react-native';
+import { Camera, Shield, Loader, Languages } from 'lucide-react-native';
 import { verifyIdentity } from '@/services/mockIdentityVerification';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 export default function IdentityVerificationScreen() {
   const router = useRouter();
+  const { t, language, setLanguage } = useTranslation();
+
+  const toggleLanguage = () => {
+    setLanguage(language === 'en' ? 'tr' : 'en');
+  };
   const [permission, requestPermission] = useCameraPermissions();
   const [isVerifying, setIsVerifying] = useState(false);
   const [facing, setFacing] = useState<CameraType>('front');
@@ -32,12 +38,12 @@ export default function IdentityVerificationScreen() {
               <Camera size={48} color="#667eea" strokeWidth={2} />
             </View>
           </View>
-          <Text style={styles.title}>Camera Permission Required</Text>
+          <Text style={styles.title}>{t('registration.cameraPermissionTitle')}</Text>
           <Text style={styles.description}>
-            We need access to your camera to verify your identity by taking a selfie and photo of your government ID.
+            {t('registration.cameraPermissionDescription')}
           </Text>
           <Pressable style={styles.button} onPress={requestPermission}>
-            <Text style={styles.buttonText}>Grant Permission</Text>
+            <Text style={styles.buttonText}>{t('registration.grantPermission')}</Text>
           </Pressable>
         </View>
       </View>
@@ -48,28 +54,29 @@ export default function IdentityVerificationScreen() {
     if (!cameraRef.current) return;
 
     try {
+      const photo = await cameraRef.current.takePictureAsync();
+      
       if (captureStep === 'selfie') {
-        setSelfieUri('mock-selfie-uri');
-        setFacing('back');
+        setSelfieUri(photo.uri);
         setCaptureStep('id');
+        setFacing('back');
       } else if (captureStep === 'id') {
-        setIdUri('mock-id-uri');
+        setIdUri(photo.uri);
         setCaptureStep('verifying');
         await handleVerify();
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to capture image. Please try again.');
+      Alert.alert(t('common.error'), t('common.error'));
     }
   };
 
   const handleVerify = async () => {
+    if (!selfieUri || !idUri) return;
+
     setIsVerifying(true);
 
     try {
-      const result = await verifyIdentity({
-        selfieImage: selfieUri || '',
-        idImage: idUri || '',
-      });
+      const result = await verifyIdentity(selfieUri, idUri);
 
       if (result.success && result.nationalIdNumber) {
         router.push({
@@ -78,24 +85,23 @@ export default function IdentityVerificationScreen() {
         });
       } else {
         Alert.alert(
-          'Verification Failed',
-          result.error || 'Verification failed. Please ensure your ID is valid and your photo is clear.',
+          t('registration.verificationFailed'),
+          t('registration.verificationFailedMessage'),
           [
             {
-              text: 'Try Again',
+              text: t('registration.tryAgain'),
               onPress: () => {
                 setCaptureStep('selfie');
                 setSelfieUri(null);
                 setIdUri(null);
                 setFacing('front');
-                setIsVerifying(false);
               },
             },
           ]
         );
       }
     } catch (error) {
-      Alert.alert('Error', 'An error occurred during verification. Please try again.');
+      Alert.alert(t('common.error'), t('common.error'));
       setCaptureStep('selfie');
       setSelfieUri(null);
       setIdUri(null);
@@ -108,16 +114,21 @@ export default function IdentityVerificationScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <View style={styles.stepBadge}>
-          <Text style={styles.stepBadgeText}>Step 1 of 3</Text>
+        <View style={styles.headerTop}>
+          <View style={styles.stepBadge}>
+            <Text style={styles.stepBadgeText}>{t('registration.step1')}</Text>
+          </View>
+          <Pressable style={styles.languageButton} onPress={toggleLanguage}>
+            <Languages size={20} color="#667eea" strokeWidth={2} />
+          </Pressable>
         </View>
-        <Text style={styles.title}>Identity Verification</Text>
+        <Text style={styles.title}>{t('registration.identityVerification')}</Text>
         <Text style={styles.subtitle}>
           {captureStep === 'selfie'
-            ? 'Take a clear selfie facing the camera'
+            ? t('registration.takeSelfie')
             : captureStep === 'id'
-            ? 'Take a photo of your government ID'
-            : 'Verifying your identity...'}
+            ? t('registration.takeIdPhoto')
+            : t('registration.verifying')}
         </Text>
       </View>
 
@@ -128,8 +139,8 @@ export default function IdentityVerificationScreen() {
               <Loader size={48} color="#667eea" strokeWidth={2} />
             </View>
           </View>
-          <Text style={styles.verifyingText}>Verifying your identity...</Text>
-          <Text style={styles.verifyingSubtext}>This may take a few seconds</Text>
+          <Text style={styles.verifyingText}>{t('registration.verifying')}</Text>
+          <Text style={styles.verifyingSubtext}>{t('common.loading')}</Text>
         </View>
       ) : (
         <>
@@ -145,13 +156,13 @@ export default function IdentityVerificationScreen() {
                   <View style={styles.guideCircle}>
                     <View style={styles.guideInnerCircle} />
                   </View>
-                  <Text style={styles.guideText}>Position your face in the frame</Text>
+                  <Text style={styles.guideText}>{t('registration.takeSelfie')}</Text>
                 </View>
               )}
               {captureStep === 'id' && (
                 <View style={styles.idGuide}>
                   <View style={styles.guideRect} />
-                  <Text style={styles.guideText}>Position your ID in the frame</Text>
+                  <Text style={styles.guideText}>{t('registration.takeIdPhoto')}</Text>
                 </View>
               )}
             </View>
@@ -165,7 +176,7 @@ export default function IdentityVerificationScreen() {
             >
               <Camera size={24} color="#fff" strokeWidth={2.5} />
               <Text style={styles.captureButtonText}>
-                {captureStep === 'selfie' ? 'Capture Selfie' : 'Capture ID'}
+                {captureStep === 'selfie' ? t('registration.captureSelfie') : t('registration.captureId')}
               </Text>
             </Pressable>
           </View>
@@ -179,41 +190,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8f9fa',
-  },
-  header: {
-    padding: 32,
-    paddingTop: 60,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  stepBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#f0f4ff',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginBottom: 16,
-    borderWidth: 2,
-    borderColor: '#667eea',
-  },
-  stepBadgeText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#667eea',
-    letterSpacing: 0.5,
-  },
-  title: {
-    fontSize: 36,
-    fontWeight: '800',
-    color: '#1a1a1a',
-    marginBottom: 12,
-    letterSpacing: -0.5,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-    lineHeight: 24,
   },
   content: {
     flex: 1,
@@ -234,12 +210,79 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: '#667eea',
   },
+  title: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#1a1a1a',
+    marginBottom: 16,
+    textAlign: 'center',
+    letterSpacing: -0.5,
+  },
   description: {
     fontSize: 16,
     color: '#666',
     textAlign: 'center',
-    marginTop: 16,
+    lineHeight: 24,
     marginBottom: 32,
+  },
+  button: {
+    backgroundColor: '#667eea',
+    borderRadius: 16,
+    padding: 18,
+    width: '100%',
+    alignItems: 'center',
+    shadowColor: '#667eea',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  header: {
+    padding: 32,
+    paddingTop: 60,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  stepBadge: {
+    backgroundColor: '#f0f4ff',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#667eea',
+  },
+  languageButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#f0f4ff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#667eea',
+  },
+  stepBadgeText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#667eea',
+    letterSpacing: 0.5,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#666',
     lineHeight: 24,
   },
   cameraContainer: {
@@ -257,65 +300,56 @@ const styles = StyleSheet.create({
   },
   faceGuide: {
     alignItems: 'center',
-    justifyContent: 'center',
   },
   guideCircle: {
-    width: 280,
-    height: 280,
-    borderRadius: 140,
-    borderWidth: 3,
+    width: 250,
+    height: 250,
+    borderRadius: 125,
+    borderWidth: 4,
     borderColor: '#fff',
-    borderStyle: 'solid',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#fff',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 20,
+    marginBottom: 24,
   },
   guideInnerCircle: {
-    width: 240,
-    height: 240,
-    borderRadius: 120,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
     borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
+    borderColor: '#667eea',
     borderStyle: 'dashed',
   },
   idGuide: {
     alignItems: 'center',
-    justifyContent: 'center',
   },
   guideRect: {
-    width: 320,
+    width: 300,
     height: 200,
     borderRadius: 16,
-    borderWidth: 3,
+    borderWidth: 4,
     borderColor: '#fff',
-    borderStyle: 'solid',
-    shadowColor: '#fff',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 20,
+    marginBottom: 24,
   },
   guideText: {
-    color: '#fff',
     fontSize: 18,
     fontWeight: '700',
-    marginTop: 32,
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
+    color: '#fff',
+    textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   footer: {
-    padding: 32,
     backgroundColor: '#fff',
+    padding: 32,
+    paddingBottom: 40,
     borderTopWidth: 1,
     borderTopColor: '#f0f0f0',
   },
   captureButton: {
     backgroundColor: '#667eea',
     borderRadius: 16,
-    padding: 20,
+    padding: 18,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
@@ -326,14 +360,14 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
   },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
   captureButtonText: {
     color: '#fff',
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
     letterSpacing: 0.5,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
   verifyingContainer: {
     flex: 1,
@@ -346,42 +380,25 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   verifyingIconCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     backgroundColor: '#f0f4ff',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 3,
+    borderWidth: 4,
     borderColor: '#667eea',
   },
   verifyingText: {
-    marginTop: 24,
     fontSize: 24,
     fontWeight: '700',
     color: '#1a1a1a',
+    marginBottom: 12,
+    textAlign: 'center',
   },
   verifyingSubtext: {
-    marginTop: 12,
     fontSize: 16,
     color: '#666',
-  },
-  button: {
-    backgroundColor: '#667eea',
-    borderRadius: 16,
-    padding: 18,
-    alignItems: 'center',
-    marginTop: 24,
-    shadowColor: '#667eea',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '700',
-    letterSpacing: 0.5,
+    textAlign: 'center',
   },
 });

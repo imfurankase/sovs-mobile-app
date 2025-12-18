@@ -1,42 +1,31 @@
+import { useState } from 'react';
 import { StyleSheet, Text, View, ScrollView, Pressable, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
-import { User, Phone, Mail, Calendar, Shield, LogOut, Edit2 } from 'lucide-react-native';
+import { User, Phone, Mail, Calendar, Shield, LogOut, Languages } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getUserByPhoneOrEmail, getDecryptedUserData } from '@/services/mockUserDB';
-import { useState, useEffect } from 'react';
+import { useTranslation } from '@/contexts/LanguageContext';
+import { Language } from '@/i18n/translations';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const [userData, setUserData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadUserData();
-  }, []);
-
-  const loadUserData = async () => {
-    // In a real app, you'd get this from auth context/store
-    // For now, we'll use a mock approach
-    setLoading(false);
-    // Mock user data - in real app, fetch from auth state
-    setUserData({
-      firstName: 'John',
-      lastName: 'Doe',
-      phoneNumber: '+1234567890',
-      email: 'john.doe@example.com',
-      dateOfBirth: '1990-05-15',
-      role: 'VOTER',
-    });
-  };
+  const { t, language, setLanguage } = useTranslation();
+  const [userData] = useState({
+    firstName: 'John',
+    lastName: 'Doe',
+    phoneNumber: '+1234567890',
+    email: 'john.doe@example.com',
+    dateOfBirth: '1990-05-15',
+    role: 'VOTER',
+  });
 
   const handleLogout = async () => {
     Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
+      t('profile.logout'),
+      t('profile.logoutConfirm'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Logout',
+          text: t('profile.logout'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -51,18 +40,17 @@ export default function ProfileScreen() {
     );
   };
 
-  if (loading) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.loadingText}>Loading...</Text>
-      </View>
-    );
-  }
+  const toggleLanguage = () => {
+    setLanguage(language === 'en' ? 'tr' : 'en');
+  };
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Profile</Text>
+        <Text style={styles.headerTitle}>{t('profile.title')}</Text>
+        <Pressable style={styles.languageHeaderButton} onPress={toggleLanguage}>
+          <Languages size={24} color="#667eea" strokeWidth={2} />
+        </Pressable>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -76,15 +64,32 @@ export default function ProfileScreen() {
           <Text style={styles.role}>{userData?.role}</Text>
         </View>
 
+        <View style={styles.languageSection}>
+          <Text style={styles.languageSectionTitle}>{t('profile.language')}</Text>
+          <Pressable style={styles.languageButton} onPress={toggleLanguage}>
+            <View style={styles.languageButtonContent}>
+              <Languages size={24} color="#667eea" strokeWidth={2} />
+              <View style={styles.languageButtonText}>
+                <Text style={styles.languageText}>
+                  {language === 'en' ? '🇹🇷 Türkçe' : '🇬🇧 English'}
+                </Text>
+                <Text style={styles.languageSubtext}>
+                  {language === 'en' ? t('profile.switchToTurkish') : t('profile.switchToEnglish')}
+                </Text>
+              </View>
+            </View>
+          </Pressable>
+        </View>
+
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Personal Information</Text>
+          <Text style={styles.sectionTitle}>{t('profile.personalInformation')}</Text>
           
           <View style={styles.infoRow}>
             <View style={styles.infoIcon}>
               <User size={20} color="#667eea" strokeWidth={2} />
             </View>
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Full Name</Text>
+              <Text style={styles.infoLabel}>{t('profile.fullName')}</Text>
               <Text style={styles.infoValue}>
                 {userData?.firstName} {userData?.lastName}
               </Text>
@@ -96,10 +101,10 @@ export default function ProfileScreen() {
               <Calendar size={20} color="#667eea" strokeWidth={2} />
             </View>
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Date of Birth</Text>
+              <Text style={styles.infoLabel}>{t('registration.dateOfBirth')}</Text>
               <Text style={styles.infoValue}>
                 {userData?.dateOfBirth
-                  ? new Date(userData.dateOfBirth).toLocaleDateString('en-US', {
+                  ? new Date(userData.dateOfBirth).toLocaleDateString(language === 'tr' ? 'tr-TR' : 'en-US', {
                       year: 'numeric',
                       month: 'long',
                       day: 'numeric',
@@ -114,7 +119,7 @@ export default function ProfileScreen() {
               <Phone size={20} color="#667eea" strokeWidth={2} />
             </View>
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Phone Number</Text>
+              <Text style={styles.infoLabel}>{t('registration.phoneNumber')}</Text>
               <Text style={styles.infoValue}>{userData?.phoneNumber || 'N/A'}</Text>
             </View>
           </View>
@@ -125,7 +130,7 @@ export default function ProfileScreen() {
                 <Mail size={20} color="#667eea" strokeWidth={2} />
               </View>
               <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>Email</Text>
+                <Text style={styles.infoLabel}>{t('registration.email')}</Text>
                 <Text style={styles.infoValue}>{userData.email}</Text>
               </View>
             </View>
@@ -136,15 +141,15 @@ export default function ProfileScreen() {
               <Shield size={20} color="#10b981" strokeWidth={2} />
             </View>
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Verification Status</Text>
-              <Text style={styles.infoValue}>Verified</Text>
+              <Text style={styles.infoLabel}>{t('profile.verificationStatus')}</Text>
+              <Text style={styles.infoValue}>{t('profile.verified')}</Text>
             </View>
           </View>
         </View>
 
         <Pressable style={styles.logoutButton} onPress={handleLogout}>
           <LogOut size={20} color="#fff" strokeWidth={2.5} />
-          <Text style={styles.logoutButtonText}>Logout</Text>
+          <Text style={styles.logoutButtonText}>{t('profile.logout')}</Text>
         </Pressable>
       </ScrollView>
     </View>
@@ -163,6 +168,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   headerTitle: {
     fontSize: 28,
@@ -170,13 +178,23 @@ const styles = StyleSheet.create({
     color: '#1a1a1a',
     letterSpacing: -0.5,
   },
+  languageHeaderButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#f0f4ff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#667eea',
+  },
   scrollContent: {
     padding: 24,
   },
   profileHeader: {
     alignItems: 'center',
-    marginBottom: 32,
-    paddingBottom: 32,
+    marginBottom: 24,
+    paddingBottom: 24,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
@@ -203,6 +221,45 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 1,
+  },
+  languageSection: {
+    marginBottom: 24,
+  },
+  languageSectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    marginBottom: 12,
+  },
+  languageButton: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 2,
+    borderColor: '#667eea',
+    shadowColor: '#667eea',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  languageButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  languageButtonText: {
+    marginLeft: 16,
+    flex: 1,
+  },
+  languageText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#667eea',
+    marginBottom: 4,
+  },
+  languageSubtext: {
+    fontSize: 14,
+    color: '#666',
   },
   section: {
     marginBottom: 32,
@@ -269,11 +326,4 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.5,
   },
-  loadingText: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    marginTop: 48,
-  },
 });
-

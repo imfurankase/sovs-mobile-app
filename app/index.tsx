@@ -1,10 +1,22 @@
 import { StyleSheet, Text, View, Pressable } from 'react-native';
 import { Link } from 'expo-router';
-import { Shield, LogIn } from 'lucide-react-native';
+import { Shield, LogIn, Languages } from 'lucide-react-native';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 export default function WelcomeScreen() {
+  const { t, language, setLanguage } = useTranslation();
+
+  const toggleLanguage = () => {
+    setLanguage(language === 'en' ? 'tr' : 'en');
+  };
+
   return (
     <View style={styles.container}>
+      <View style={styles.header}>
+        <Pressable style={styles.languageButton} onPress={toggleLanguage}>
+          <Languages size={24} color="#667eea" strokeWidth={2} />
+        </Pressable>
+      </View>
       <View style={styles.content}>
         <View style={styles.iconContainer}>
           <View style={styles.iconCircle}>
@@ -12,24 +24,23 @@ export default function WelcomeScreen() {
           </View>
         </View>
         
-        <Text style={styles.appName}>Secure Voting</Text>
-        <Text style={styles.tagline}>System</Text>
+        <Text style={styles.appName}>{t('welcome.title')}</Text>
+        <Text style={styles.tagline}>{t('welcome.tagline')}</Text>
         <Text style={styles.description}>
-          Register securely to participate in online voting. Verify your identity with your
-          government ID and create your voter account.
+          {t('welcome.description')}
         </Text>
 
         <View style={styles.buttonContainer}>
           <Link href="/register/identity" asChild>
             <Pressable style={styles.primaryButton}>
-              <Text style={styles.primaryButtonText}>Get Started</Text>
+              <Text style={styles.primaryButtonText}>{t('welcome.getStarted')}</Text>
             </Pressable>
           </Link>
 
           <Link href="/login" asChild>
             <Pressable style={styles.secondaryButton}>
               <LogIn size={20} color="#667eea" strokeWidth={2.5} style={styles.buttonIcon} />
-              <Text style={styles.secondaryButtonText}>Login</Text>
+              <Text style={styles.secondaryButtonText}>{t('welcome.login')}</Text>
             </Pressable>
           </Link>
         </View>
@@ -42,6 +53,27 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8f9fa',
+  },
+  header: {
+    position: 'absolute',
+    top: 60,
+    right: 24,
+    zIndex: 10,
+  },
+  languageButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#667eea',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   content: {
     flex: 1,

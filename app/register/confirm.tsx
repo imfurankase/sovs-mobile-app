@@ -1,11 +1,17 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View, Pressable, Alert, ActivityIndicator, ScrollView } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { CheckCircle2, User, Calendar, Phone, Mail, Shield, Sparkles } from 'lucide-react-native';
+import { CheckCircle2, User, Calendar, Phone, Mail, Shield, Sparkles, Languages } from 'lucide-react-native';
 import { createVoterAccount } from '@/services/mockUserDB';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 export default function ConfirmRegistrationScreen() {
   const router = useRouter();
+  const { t, language, setLanguage } = useTranslation();
+
+  const toggleLanguage = () => {
+    setLanguage(language === 'en' ? 'tr' : 'en');
+  };
   const params = useLocalSearchParams();
 
   const [isCreating, setIsCreating] = useState(false);
@@ -27,11 +33,11 @@ export default function ConfirmRegistrationScreen() {
       if (result.success) {
         router.replace('/register/success');
       } else {
-        Alert.alert('Error', result.error || 'Failed to create account. Please try again.');
+        Alert.alert(t('common.error'), result.error || t('common.error'));
         setIsCreating(false);
       }
     } catch (error) {
-      Alert.alert('Error', 'An error occurred. Please try again.');
+      Alert.alert(t('common.error'), t('common.error'));
       setIsCreating(false);
     }
   };
@@ -40,12 +46,17 @@ export default function ConfirmRegistrationScreen() {
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <View style={styles.stepBadge}>
-            <Text style={styles.stepBadgeText}>Step 3 of 3</Text>
+          <View style={styles.headerTop}>
+            <View style={styles.stepBadge}>
+              <Text style={styles.stepBadgeText}>{t('registration.step3')}</Text>
+            </View>
+            <Pressable style={styles.languageButton} onPress={toggleLanguage}>
+              <Languages size={20} color="#667eea" strokeWidth={2} />
+            </Pressable>
           </View>
-          <Text style={styles.title}>Confirm Registration</Text>
+          <Text style={styles.title}>{t('registration.confirmRegistration')}</Text>
           <Text style={styles.subtitle}>
-            Please review your information before creating your account.
+            {t('registration.confirmDescription')}
           </Text>
         </View>
 
@@ -55,7 +66,7 @@ export default function ConfirmRegistrationScreen() {
               <View style={styles.cardHeaderIcon}>
                 <Shield size={24} color="#667eea" strokeWidth={2} />
               </View>
-              <Text style={styles.cardHeaderText}>Your Information</Text>
+              <Text style={styles.cardHeaderText}>{t('profile.personalInformation')}</Text>
             </View>
 
             <View style={styles.infoSection}>
@@ -64,7 +75,7 @@ export default function ConfirmRegistrationScreen() {
                   <User size={18} color="#667eea" strokeWidth={2} />
                 </View>
                 <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>Full Name</Text>
+                  <Text style={styles.infoLabel}>{t('registration.name')}</Text>
                   <Text style={styles.infoValue}>{userData.firstName} {userData.lastName}</Text>
                 </View>
               </View>
@@ -74,9 +85,9 @@ export default function ConfirmRegistrationScreen() {
                   <Calendar size={18} color="#667eea" strokeWidth={2} />
                 </View>
                 <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>Date of Birth</Text>
+                  <Text style={styles.infoLabel}>{t('registration.dateOfBirth')}</Text>
                   <Text style={styles.infoValue}>
-                    {new Date(userData.dateOfBirth).toLocaleDateString('en-US', {
+                    {new Date(userData.dateOfBirth).toLocaleDateString(language === 'tr' ? 'tr-TR' : 'en-US', {
                       year: 'numeric',
                       month: 'long',
                       day: 'numeric',
@@ -90,7 +101,7 @@ export default function ConfirmRegistrationScreen() {
                   <Phone size={18} color="#667eea" strokeWidth={2} />
                 </View>
                 <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>Phone Number</Text>
+                  <Text style={styles.infoLabel}>{t('registration.phoneNumber')}</Text>
                   <Text style={styles.infoValue}>{userData.phoneNumber}</Text>
                 </View>
               </View>
@@ -101,7 +112,7 @@ export default function ConfirmRegistrationScreen() {
                     <Mail size={18} color="#667eea" strokeWidth={2} />
                   </View>
                   <View style={styles.infoContent}>
-                    <Text style={styles.infoLabel}>Email</Text>
+                    <Text style={styles.infoLabel}>{t('registration.email')}</Text>
                     <Text style={styles.infoValue}>{userData.email}</Text>
                   </View>
                 </View>
@@ -112,7 +123,7 @@ export default function ConfirmRegistrationScreen() {
                   <Shield size={18} color="#667eea" strokeWidth={2} />
                 </View>
                 <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>Role</Text>
+                  <Text style={styles.infoLabel}>{t('registration.role')}</Text>
                   <Text style={styles.infoValue}>VOTER</Text>
                 </View>
               </View>
@@ -122,15 +133,15 @@ export default function ConfirmRegistrationScreen() {
           <View style={styles.verificationCard}>
             <View style={styles.verificationItem}>
               <CheckCircle2 size={20} color="#10b981" strokeWidth={2.5} />
-              <Text style={styles.verificationText}>Identity verified</Text>
+              <Text style={styles.verificationText}>{t('registration.identityVerified')}</Text>
             </View>
             <View style={styles.verificationItem}>
               <CheckCircle2 size={20} color="#10b981" strokeWidth={2.5} />
-              <Text style={styles.verificationText}>Data retrieved from government database</Text>
+              <Text style={styles.verificationText}>{t('registration.dataRetrieved')}</Text>
             </View>
             <View style={styles.verificationItem}>
               <CheckCircle2 size={20} color="#10b981" strokeWidth={2.5} />
-              <Text style={styles.verificationText}>Data will be encrypted and stored securely</Text>
+              <Text style={styles.verificationText}>{t('registration.dataEncrypted')}</Text>
             </View>
           </View>
 
@@ -144,7 +155,7 @@ export default function ConfirmRegistrationScreen() {
             ) : (
               <>
                 <Sparkles size={20} color="#fff" strokeWidth={2.5} />
-                <Text style={styles.buttonText}>Create Account</Text>
+                <Text style={styles.buttonText}>{t('registration.createAccount')}</Text>
               </>
             )}
           </Pressable>
@@ -170,13 +181,27 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
   stepBadge: {
-    alignSelf: 'flex-start',
     backgroundColor: '#f0f4ff',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: '#667eea',
+  },
+  languageButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#f0f4ff',
+    justifyContent: 'center',
+    alignItems: 'center',
     borderWidth: 2,
     borderColor: '#667eea',
   },

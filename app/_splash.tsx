@@ -3,35 +3,37 @@ import { StyleSheet, Text, View, Pressable, ScrollView, Dimensions, NativeScroll
 import { useRouter } from 'expo-router';
 import { Shield, Lock, CheckCircle2, ArrowRight } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 const { width } = Dimensions.get('window');
 
 interface Slide {
   icon: any;
-  title: string;
-  description: string;
+  titleKey: string;
+  descriptionKey: string;
 }
 
 const slides: Slide[] = [
   {
     icon: Shield,
-    title: 'Secure & Verified',
-    description: 'Your identity is verified through government databases to ensure secure and legitimate voting.',
+    titleKey: 'onboarding.slide1Title',
+    descriptionKey: 'onboarding.slide1Description',
   },
   {
     icon: Lock,
-    title: 'Privacy Protected',
-    description: 'Your data is encrypted and stored securely. We never store your ID images or selfies.',
+    titleKey: 'onboarding.slide2Title',
+    descriptionKey: 'onboarding.slide2Description',
   },
   {
     icon: CheckCircle2,
-    title: 'Easy Registration',
-    description: 'Simple 3-step registration process. Verify your identity and start voting in minutes.',
+    titleKey: 'onboarding.slide3Title',
+    descriptionKey: 'onboarding.slide3Description',
   },
 ];
 
 export default function SplashScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const scrollViewRef = useRef<ScrollView>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
 
@@ -58,12 +60,10 @@ export default function SplashScreen() {
   const handleFinish = async () => {
     try {
       await AsyncStorage.setItem('hasSeenOnboarding', 'true');
-      // Use a small timeout to ensure storage is saved before navigation
       setTimeout(() => {
         router.replace('/');
       }, 100);
     } catch (error) {
-      // Even if storage fails, navigate to home
       router.replace('/');
     }
   };
@@ -89,8 +89,8 @@ export default function SplashScreen() {
                     <Icon size={64} color="#667eea" strokeWidth={2} />
                   </View>
                 </View>
-                <Text style={styles.title}>{slide.title}</Text>
-                <Text style={styles.description}>{slide.description}</Text>
+                <Text style={styles.title}>{t(slide.titleKey)}</Text>
+                <Text style={styles.description}>{t(slide.descriptionKey)}</Text>
               </View>
             </View>
           );
@@ -114,16 +114,16 @@ export default function SplashScreen() {
           {currentSlide < slides.length - 1 ? (
             <>
               <Pressable style={styles.skipButton} onPress={handleSkip}>
-                <Text style={styles.skipButtonText}>Skip</Text>
+                <Text style={styles.skipButtonText}>{t('onboarding.skip')}</Text>
               </Pressable>
               <Pressable style={styles.nextButton} onPress={handleNext}>
-                <Text style={styles.nextButtonText}>Next</Text>
+                <Text style={styles.nextButtonText}>{t('onboarding.next')}</Text>
                 <ArrowRight size={20} color="#fff" strokeWidth={2.5} />
               </Pressable>
             </>
           ) : (
             <Pressable style={styles.getStartedButton} onPress={handleFinish}>
-              <Text style={styles.getStartedButtonText}>Get Started</Text>
+              <Text style={styles.getStartedButtonText}>{t('onboarding.getStarted')}</Text>
               <ArrowRight size={20} color="#fff" strokeWidth={2.5} />
             </Pressable>
           )}

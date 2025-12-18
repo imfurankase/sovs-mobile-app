@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, TextInput, Pressable, Alert, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Database, User, Calendar, Phone, Mail, ArrowRight } from 'lucide-react-native';
+import { Database, User, Calendar, Phone, Mail, ArrowRight, Languages } from 'lucide-react-native';
 import { fetchGovernmentData } from '@/services/mockGovernmentDB';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 interface GovernmentData {
   firstName: string;
@@ -14,6 +15,11 @@ interface GovernmentData {
 
 export default function GovernmentDataScreen() {
   const router = useRouter();
+  const { t, language, setLanguage } = useTranslation();
+
+  const toggleLanguage = () => {
+    setLanguage(language === 'en' ? 'tr' : 'en');
+  };
   const params = useLocalSearchParams();
   const nationalIdNumber = params.nationalIdNumber as string;
 
@@ -37,10 +43,10 @@ export default function GovernmentDataScreen() {
         setData(governmentData);
         setEmail(governmentData.email || '');
       } else {
-        setError('Your identity was verified, but no official record was found. Registration cannot be completed.');
+        setError(t('registration.noRecordFound'));
       }
     } catch (err) {
-      setError('Failed to fetch government data. Please try again.');
+      setError(t('common.error'));
     } finally {
       setIsLoading(false);
     }
@@ -50,7 +56,7 @@ export default function GovernmentDataScreen() {
     if (!data) return;
 
     if (email && !email.includes('@')) {
-      Alert.alert('Error', 'Please enter a valid email address');
+      Alert.alert(t('common.error'), t('registration.emailPlaceholder'));
       return;
     }
 
@@ -71,8 +77,8 @@ export default function GovernmentDataScreen() {
       <View style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#667eea" />
-          <Text style={styles.loadingText}>Fetching your information...</Text>
-          <Text style={styles.loadingSubtext}>Retrieving data from government database</Text>
+          <Text style={styles.loadingText}>{t('registration.fetchingInfo')}</Text>
+          <Text style={styles.loadingSubtext}>{t('registration.retrievingData')}</Text>
         </View>
       </View>
     );
@@ -87,13 +93,13 @@ export default function GovernmentDataScreen() {
               <Database size={32} color="#667eea" strokeWidth={2} />
             </View>
           </View>
-          <Text style={styles.errorTitle}>Registration Cannot Continue</Text>
-          <Text style={styles.errorText}>{error}</Text>
+          <Text style={styles.errorTitle}>{t('registration.registrationCannotContinue')}</Text>
+          <Text style={styles.errorText}>{error || t('registration.noRecordFound')}</Text>
           <Pressable
             style={styles.button}
             onPress={() => router.push('/register/identity')}
           >
-            <Text style={styles.buttonText}>Try Again</Text>
+            <Text style={styles.buttonText}>{t('registration.tryAgain')}</Text>
           </Pressable>
         </View>
       </View>
@@ -107,13 +113,17 @@ export default function GovernmentDataScreen() {
     >
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <View style={styles.stepBadge}>
-            <Text style={styles.stepBadgeText}>Step 2 of 3</Text>
+          <View style={styles.headerTop}>
+            <View style={styles.stepBadge}>
+              <Text style={styles.stepBadgeText}>{t('registration.step2')}</Text>
+            </View>
+            <Pressable style={styles.languageButton} onPress={toggleLanguage}>
+              <Languages size={20} color="#667eea" strokeWidth={2} />
+            </Pressable>
           </View>
-          <Text style={styles.title}>Verify Your Information</Text>
+          <Text style={styles.title}>{t('registration.verifyInformation')}</Text>
           <Text style={styles.subtitle}>
-            Your information has been retrieved from the government database. Please verify
-            and add your email if missing.
+            {t('registration.verifyInformationDescription')}
           </Text>
         </View>
 
@@ -124,7 +134,7 @@ export default function GovernmentDataScreen() {
                 <User size={20} color="#667eea" strokeWidth={2} />
               </View>
               <View style={styles.fieldContent}>
-                <Text style={styles.fieldLabel}>First Name</Text>
+                <Text style={styles.fieldLabel}>{t('registration.firstName')}</Text>
                 <Text style={styles.fieldValue}>{data.firstName}</Text>
               </View>
             </View>
@@ -134,7 +144,7 @@ export default function GovernmentDataScreen() {
                 <User size={20} color="#667eea" strokeWidth={2} />
               </View>
               <View style={styles.fieldContent}>
-                <Text style={styles.fieldLabel}>Last Name</Text>
+                <Text style={styles.fieldLabel}>{t('registration.lastName')}</Text>
                 <Text style={styles.fieldValue}>{data.lastName}</Text>
               </View>
             </View>
@@ -144,9 +154,9 @@ export default function GovernmentDataScreen() {
                 <Calendar size={20} color="#667eea" strokeWidth={2} />
               </View>
               <View style={styles.fieldContent}>
-                <Text style={styles.fieldLabel}>Date of Birth</Text>
+                <Text style={styles.fieldLabel}>{t('registration.dateOfBirth')}</Text>
                 <Text style={styles.fieldValue}>
-                  {new Date(data.dateOfBirth).toLocaleDateString('en-US', {
+                  {new Date(data.dateOfBirth).toLocaleDateString(language === 'tr' ? 'tr-TR' : 'en-US', {
                     year: 'numeric',
                     month: 'long',
                     day: 'numeric',
@@ -160,7 +170,7 @@ export default function GovernmentDataScreen() {
                 <Phone size={20} color="#667eea" strokeWidth={2} />
               </View>
               <View style={styles.fieldContent}>
-                <Text style={styles.fieldLabel}>Phone Number</Text>
+                <Text style={styles.fieldLabel}>{t('registration.phoneNumber')}</Text>
                 <Text style={styles.fieldValue}>{data.phoneNumber}</Text>
               </View>
             </View>
@@ -171,14 +181,14 @@ export default function GovernmentDataScreen() {
               </View>
               <View style={styles.fieldContent}>
                 <Text style={styles.fieldLabel}>
-                  Email {!data.email && <Text style={styles.optional}>(Optional)</Text>}
+                  {t('registration.email')} {!data.email && <Text style={styles.optional}>({t('registration.optional')})</Text>}
                 </Text>
                 {data.email ? (
                   <Text style={styles.fieldValue}>{data.email}</Text>
                 ) : (
                   <TextInput
                     style={styles.emailInput}
-                    placeholder="Enter your email"
+                    placeholder={t('registration.emailPlaceholder')}
                     placeholderTextColor="#999"
                     value={email}
                     onChangeText={setEmail}
@@ -192,7 +202,7 @@ export default function GovernmentDataScreen() {
           </View>
 
           <Pressable style={styles.button} onPress={handleContinue}>
-            <Text style={styles.buttonText}>Confirm & Continue</Text>
+            <Text style={styles.buttonText}>{t('registration.confirmContinue')}</Text>
             <ArrowRight size={20} color="#fff" strokeWidth={2.5} />
           </Pressable>
         </View>
@@ -240,13 +250,27 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
   stepBadge: {
-    alignSelf: 'flex-start',
     backgroundColor: '#f0f4ff',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: '#667eea',
+  },
+  languageButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#f0f4ff',
+    justifyContent: 'center',
+    alignItems: 'center',
     borderWidth: 2,
     borderColor: '#667eea',
   },

@@ -1,12 +1,36 @@
 import { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TextInput, Pressable, Alert, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator } from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  View,
+  TextInput,
+  Pressable,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  ActivityIndicator,
+} from 'react-native';
 import { useRouter } from 'expo-router';
-import { Mail, Phone, Shield, ArrowLeft, CheckCircle2 } from 'lucide-react-native';
+import {
+  Mail,
+  Phone,
+  Shield,
+  ArrowLeft,
+  CheckCircle2,
+  Languages,
+} from 'lucide-react-native';
 import { sendOTP, verifyOTP } from '@/services/mockOTP';
 import { getUserByPhoneOrEmail } from '@/services/mockUserDB';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { t, language, setLanguage } = useTranslation();
+
+  const toggleLanguage = () => {
+    setLanguage(language === 'en' ? 'tr' : 'en');
+  };
   const [phoneOrEmail, setPhoneOrEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [step, setStep] = useState<'input' | 'otp'>('input');
@@ -14,7 +38,6 @@ export default function LoginScreen() {
   const [otpSent, setOtpSent] = useState(false);
   const [countdown, setCountdown] = useState(0);
 
-  // Countdown timer for resend OTP
   useEffect(() => {
     if (countdown > 0) {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
@@ -24,7 +47,7 @@ export default function LoginScreen() {
 
   const handleSendOTP = async () => {
     if (!phoneOrEmail.trim()) {
-      Alert.alert('Error', 'Please enter your phone number or email');
+      Alert.alert(t('common.error'), t('login.phoneOrEmail'));
       return;
     }
 
@@ -34,7 +57,7 @@ export default function LoginScreen() {
       const user = await getUserByPhoneOrEmail(phoneOrEmail.trim());
 
       if (!user) {
-        Alert.alert('Error', 'No account found with this phone number or email.');
+        Alert.alert(t('common.error'), t('login.noAccountFound'));
         setIsLoading(false);
         return;
       }
@@ -45,12 +68,12 @@ export default function LoginScreen() {
         setOtpSent(true);
         setStep('otp');
         setCountdown(60);
-        Alert.alert('OTP Sent', 'Please check your phone/email for the 6-digit OTP code.');
+        Alert.alert(t('login.otpSent'), t('login.otpSentMessage'));
       } else {
-        Alert.alert('Error', result.error || 'Failed to send OTP. Please try again.');
+        Alert.alert(t('common.error'), result.error || t('common.error'));
       }
     } catch (error) {
-      Alert.alert('Error', 'An error occurred. Please try again.');
+      Alert.alert(t('common.error'), t('common.error'));
     } finally {
       setIsLoading(false);
     }
@@ -58,7 +81,7 @@ export default function LoginScreen() {
 
   const handleVerifyOTP = async () => {
     if (!otp.trim() || otp.trim().length !== 6) {
-      Alert.alert('Error', 'Please enter a valid 6-digit OTP');
+      Alert.alert(t('common.error'), t('login.enterOTP'));
       return;
     }
 
@@ -70,10 +93,13 @@ export default function LoginScreen() {
       if (result.success) {
         router.replace('/(tabs)');
       } else {
-        Alert.alert('Verification Failed', result.error || 'Invalid OTP. Please try again.');
+        Alert.alert(
+          t('registration.verificationFailed'),
+          result.error || t('common.error')
+        );
       }
     } catch (error) {
-      Alert.alert('Error', 'An error occurred. Please try again.');
+      Alert.alert(t('common.error'), t('common.error'));
     } finally {
       setIsLoading(false);
     }
@@ -91,6 +117,11 @@ export default function LoginScreen() {
   if (step === 'otp') {
     return (
       <View style={styles.container}>
+        <View style={styles.languageHeader}>
+          <Pressable style={styles.languageButton} onPress={toggleLanguage}>
+            <Languages size={20} color="#667eea" strokeWidth={2} />
+          </Pressable>
+        </View>
         <KeyboardAvoidingView
           style={styles.keyboardView}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -103,9 +134,10 @@ export default function LoginScreen() {
                 </View>
               </View>
 
-              <Text style={styles.title}>Enter Verification Code</Text>
+              <Text style={styles.title}>{t('login.enterCode')}</Text>
               <Text style={styles.subtitle}>
-                We've sent a 6-digit code to{'\n'}
+                {t('login.codeSent')}
+                {'\n'}
                 <Text style={styles.phoneEmail}>{phoneOrEmail}</Text>
               </Text>
 
@@ -143,7 +175,9 @@ export default function LoginScreen() {
                 ) : (
                   <>
                     <CheckCircle2 size={20} color="#fff" strokeWidth={2.5} />
-                    <Text style={styles.buttonText}>Verify & Continue</Text>
+                    <Text style={styles.buttonText}>
+                      {t('login.verifyContinue')}
+                    </Text>
                   </>
                 )}
               </Pressable>
@@ -153,10 +187,15 @@ export default function LoginScreen() {
                 onPress={handleResendOTP}
                 disabled={countdown > 0}
               >
-                <Text style={[styles.resendText, countdown > 0 && styles.resendDisabled]}>
+                <Text
+                  style={[
+                    styles.resendText,
+                    countdown > 0 && styles.resendDisabled,
+                  ]}
+                >
                   {countdown > 0
-                    ? `Resend code in ${countdown}s`
-                    : 'Resend verification code'}
+                    ? `${t('login.resendIn')} ${countdown}s`
+                    : t('login.resendCode')}
                 </Text>
               </Pressable>
 
@@ -168,7 +207,7 @@ export default function LoginScreen() {
                 }}
               >
                 <ArrowLeft size={16} color="#667eea" strokeWidth={2.5} />
-                <Text style={styles.backText}>Change phone/email</Text>
+                <Text style={styles.backText}>{t('login.changeContact')}</Text>
               </Pressable>
             </View>
           </ScrollView>
@@ -179,6 +218,11 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
+      <View style={styles.languageHeader}>
+        <Pressable style={styles.languageButton} onPress={toggleLanguage}>
+          <Languages size={20} color="#667eea" strokeWidth={2} />
+        </Pressable>
+      </View>
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -191,10 +235,8 @@ export default function LoginScreen() {
               </View>
             </View>
 
-            <Text style={styles.title}>Welcome Back</Text>
-            <Text style={styles.subtitle}>
-              Enter your phone number or email to receive a verification code
-            </Text>
+            <Text style={styles.title}>{t('login.title')}</Text>
+            <Text style={styles.subtitle}>{t('login.subtitle')}</Text>
 
             <View style={styles.inputWrapper}>
               <View style={styles.inputIconContainer}>
@@ -202,7 +244,7 @@ export default function LoginScreen() {
               </View>
               <TextInput
                 style={styles.input}
-                placeholder="Phone number or email"
+                placeholder={t('login.phoneOrEmail')}
                 placeholderTextColor="#999"
                 value={phoneOrEmail}
                 onChangeText={setPhoneOrEmail}
@@ -220,18 +262,18 @@ export default function LoginScreen() {
               {isLoading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.buttonText}>Send Verification Code</Text>
+                <Text style={styles.buttonText}>{t('login.sendCode')}</Text>
               )}
             </Pressable>
 
             <View style={styles.footer}>
               <Text style={styles.note}>
-                Don't have an account?{' '}
+                {t('login.noAccount')}{' '}
                 <Text
                   style={styles.linkText}
                   onPress={() => router.push('/register/identity')}
                 >
-                  Register now
+                  {t('login.registerNow')}
                 </Text>
               </Text>
             </View>
@@ -246,6 +288,27 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8f9fa',
+  },
+  languageHeader: {
+    position: 'absolute',
+    top: 60,
+    right: 24,
+    zIndex: 10,
+  },
+  languageButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#667eea',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   keyboardView: {
     flex: 1,

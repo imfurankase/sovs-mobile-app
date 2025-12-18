@@ -3,6 +3,7 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator } from 'react-native';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
+import { LanguageProvider } from '@/contexts/LanguageContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function RootLayout() {
@@ -47,7 +48,7 @@ export default function RootLayout() {
   }
 
   return (
-    <>
+    <LanguageProvider>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="_splash" />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -55,6 +56,6 @@ export default function RootLayout() {
         <Stack.Screen name="+not-found" />
       </Stack>
       <StatusBar style="auto" />
-    </>
+    </LanguageProvider>
   );
 }

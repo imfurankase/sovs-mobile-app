@@ -2,13 +2,14 @@ import { StyleSheet, Text, View, ScrollView, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Shield, CheckCircle2, Clock, AlertCircle, LogOut } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 export default function DashboardScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
 
   const handleLogout = async () => {
     try {
-      // Clear any stored auth data (in real app, you'd clear auth tokens)
       await AsyncStorage.removeItem('hasSeenOnboarding');
       router.replace('/');
     } catch (error) {
@@ -24,8 +25,8 @@ export default function DashboardScreen() {
             <Shield size={32} color="#667eea" strokeWidth={2} />
           </View>
           <View style={styles.headerText}>
-            <Text style={styles.welcomeText}>Welcome to SOVS</Text>
-            <Text style={styles.subWelcomeText}>Secure Online Voting System</Text>
+            <Text style={styles.welcomeText}>{t('dashboard.welcome')}</Text>
+            <Text style={styles.subWelcomeText}>{t('dashboard.secureVotingSystem')}</Text>
           </View>
         </View>
         <Pressable onPress={handleLogout} style={styles.logoutButton}>
@@ -37,23 +38,23 @@ export default function DashboardScreen() {
         <View style={styles.statusCard}>
           <View style={styles.statusHeader}>
             <CheckCircle2 size={24} color="#10b981" strokeWidth={2.5} />
-            <Text style={styles.statusTitle}>Account Verified</Text>
+            <Text style={styles.statusTitle}>{t('dashboard.accountVerified')}</Text>
           </View>
           <Text style={styles.statusDescription}>
-            Your identity has been verified and your account is active. You're ready to participate in voting.
+            {t('dashboard.accountVerifiedDescription')}
           </Text>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <Text style={styles.sectionTitle}>{t('dashboard.quickActions')}</Text>
           
           <View style={styles.actionCard}>
             <View style={styles.actionIcon}>
               <Clock size={24} color="#667eea" strokeWidth={2} />
             </View>
             <View style={styles.actionContent}>
-              <Text style={styles.actionTitle}>Upcoming Elections</Text>
-              <Text style={styles.actionDescription}>No elections scheduled at this time</Text>
+              <Text style={styles.actionTitle}>{t('dashboard.upcomingElections')}</Text>
+              <Text style={styles.actionDescription}>{t('dashboard.noElectionsScheduled')}</Text>
             </View>
           </View>
 
@@ -62,21 +63,21 @@ export default function DashboardScreen() {
               <Shield size={24} color="#667eea" strokeWidth={2} />
             </View>
             <View style={styles.actionContent}>
-              <Text style={styles.actionTitle}>Voting Status</Text>
-              <Text style={styles.actionDescription}>Your account is ready for voting</Text>
+              <Text style={styles.actionTitle}>{t('dashboard.votingStatus')}</Text>
+              <Text style={styles.actionDescription}>{t('dashboard.accountReady')}</Text>
             </View>
           </View>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Information</Text>
+          <Text style={styles.sectionTitle}>{t('common.information')}</Text>
           
           <View style={styles.infoCard}>
             <AlertCircle size={20} color="#f59e0b" strokeWidth={2} />
             <View style={styles.infoContent}>
-              <Text style={styles.infoTitle}>Voting Period</Text>
+              <Text style={styles.infoTitle}>{t('dashboard.votingPeriod')}</Text>
               <Text style={styles.infoText}>
-                Voting will be available during official election periods. You'll receive notifications when elections are open.
+                {t('dashboard.votingPeriodDescription')}
               </Text>
             </View>
           </View>
@@ -237,4 +238,3 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 });
-

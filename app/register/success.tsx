@@ -1,9 +1,15 @@
 import { StyleSheet, Text, View, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
-import { CheckCircle2, ArrowRight } from 'lucide-react-native';
+import { CheckCircle2, ArrowRight, Languages } from 'lucide-react-native';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 export default function RegistrationSuccessScreen() {
   const router = useRouter();
+  const { t, language, setLanguage } = useTranslation();
+
+  const toggleLanguage = () => {
+    setLanguage(language === 'en' ? 'tr' : 'en');
+  };
 
   const handleContinue = () => {
     router.replace('/(tabs)');
@@ -11,6 +17,11 @@ export default function RegistrationSuccessScreen() {
 
   return (
     <View style={styles.container}>
+      <View style={styles.header}>
+        <Pressable style={styles.languageButton} onPress={toggleLanguage}>
+          <Languages size={24} color="#667eea" strokeWidth={2} />
+        </Pressable>
+      </View>
       <View style={styles.content}>
         <View style={styles.iconContainer}>
           <View style={styles.iconCircle}>
@@ -18,28 +29,28 @@ export default function RegistrationSuccessScreen() {
           </View>
         </View>
 
-        <Text style={styles.title}>Registration Successful!</Text>
+        <Text style={styles.title}>{t('registration.successTitle')}</Text>
         <Text style={styles.subtitle}>
-          Your account has been created and verified. You can now access all features of SOVS.
+          {t('registration.successDescription')}
         </Text>
 
         <View style={styles.infoCard}>
           <View style={styles.infoItem}>
             <Text style={styles.infoIcon}>✓</Text>
-            <Text style={styles.infoText}>Identity verified</Text>
+            <Text style={styles.infoText}>{t('registration.identityVerified')}</Text>
           </View>
           <View style={styles.infoItem}>
             <Text style={styles.infoIcon}>✓</Text>
-            <Text style={styles.infoText}>Account created</Text>
+            <Text style={styles.infoText}>{t('registration.accountCreated')}</Text>
           </View>
           <View style={[styles.infoItem, styles.lastInfoItem]}>
             <Text style={styles.infoIcon}>✓</Text>
-            <Text style={styles.infoText}>Ready to vote</Text>
+            <Text style={styles.infoText}>{t('registration.readyToVote')}</Text>
           </View>
         </View>
 
         <Pressable style={styles.button} onPress={handleContinue}>
-          <Text style={styles.buttonText}>Continue to Dashboard</Text>
+          <Text style={styles.buttonText}>{t('registration.continueToDashboard')}</Text>
           <ArrowRight size={20} color="#fff" strokeWidth={2.5} />
         </Pressable>
       </View>
@@ -51,6 +62,27 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8f9fa',
+  },
+  header: {
+    position: 'absolute',
+    top: 60,
+    right: 24,
+    zIndex: 10,
+  },
+  languageButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#667eea',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   content: {
     flex: 1,
@@ -146,4 +178,3 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
 });
-
