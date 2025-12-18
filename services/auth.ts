@@ -1,5 +1,6 @@
 import { supabase, FUNCTIONS_BASE_URL } from './supabase';
 import { usersAPI } from './api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 /**
  * Register a new user with Supabase Auth and add to users table
@@ -176,42 +177,23 @@ export async function verifyOTP(
         return { success: false, error: 'User not found in database' };
       }
 
-      // Try to sign in with password to create a real session
-      // Use the placeholder email format that was used during registration
-      const authEmail = user.email || `${user.phone_number.replace(/[^0-9]/g, '')}@sovs.local`;
-      
-      // Try to sign in - if user doesn't exist in auth, create them
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-        email: authEmail,
-        password: `temp_${user.user_id}`, // Use a predictable password based on user_id
-      });
-
-      // If sign in fails (user doesn't exist in auth), create the auth user
-      if (signInError) {
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email: authEmail,
-          password: `temp_${user.user_id}`,
-          options: {
-            data: {
-              name: `${user.name} ${user.surname}`,
-              phone_number: user.phone_number,
-              user_id: user.user_id,
-            },
-          },
-        });
-
-        if (signUpError && !signUpError.message.includes('already registered')) {
-          console.error('Error creating auth user:', signUpError);
-          // Still return success since OTP was valid
-        }
-
-        // Try to sign in again after creating
-        if (!signUpError || signUpError.message.includes('already registered')) {
-          await supabase.auth.signInWithPassword({
-            email: authEmail,
-            password: `temp_${user.user_id}`,
-          });
-        }
+      // In dev mode, store user info in AsyncStorage instead of using Supabase Auth
+      // This bypasses all the Auth configuration issues
+      try {
+        await AsyncStorage.setItem('dev_user_session', JSON.stringify({
+          user_id: user.user_id,
+          phone_number: user.phone_number,
+          email: user.email,
+          name: user.name,
+          surname: user.surname,
+          date_of_birth: user.date_of_birth,
+          status: user.status,
+          logged_in_at: new Date().toISOString(),
+        }));
+        console.log('✅ [DEV MODE] User session stored locally');
+      } catch (storageError) {
+        console.error('Error storing dev session:', storageError);
+        // Continue anyway - the OTP was valid
       }
       
       return { success: true };
@@ -257,6 +239,13 @@ export async function verifyOTP(
  */
 export async function signOut(): Promise<{ success: boolean; error?: string }> {
   try {
+    // In dev mode, clear AsyncStorage
+    if (USE_MOCK_OTP) {
+      await AsyncStorage.removeItem('dev_user_session');
+      console.log('✅ [DEV MODE] User session cleared');
+      return { success: true };
+    }
+    
     const { error } = await supabase.auth.signOut();
     if (error) {
       return { success: false, error: error.message };
@@ -271,6 +260,29 @@ export async function signOut(): Promise<{ success: boolean; error?: string }> {
  * Get current user
  */
 export async function getCurrentUser() {
+  // In dev mode, check AsyncStorage first
+  if (USE_MOCK_OTP) {
+    try {
+      const devSession = await AsyncStorage.getItem('dev_user_session');
+      if (devSession) {
+        const userData = JSON.parse(devSession);
+        // Return a mock user object that matches Supabase user structure
+        return {
+          id: userData.user_id,
+          email: userData.email || `${userData.phone_number.replace(/[^0-9]/g, '')}@sovs.local`,
+          phone: userData.phone_number,
+          user_metadata: {
+            user_id: userData.user_id,
+            name: `${userData.name} ${userData.surname}`,
+            phone_number: userData.phone_number,
+          },
+        };
+      }
+    } catch (error) {
+      console.error('Error reading dev session:', error);
+    }
+  }
+  
   const { data: { user } } = await supabase.auth.getUser();
   return user;
 }
@@ -279,6 +291,33 @@ export async function getCurrentUser() {
  * Get current session
  */
 export async function getCurrentSession() {
+  // In dev mode, check AsyncStorage first
+  if (USE_MOCK_OTP) {
+    try {
+      const devSession = await AsyncStorage.getItem('dev_user_session');
+      if (devSession) {
+        const userData = JSON.parse(devSession);
+        // Return a mock session object
+        return {
+          user: {
+            id: userData.user_id,
+            email: userData.email || `${userData.phone_number.replace(/[^0-9]/g, '')}@sovs.local`,
+            phone: userData.phone_number,
+            user_metadata: {
+              user_id: userData.user_id,
+              name: `${userData.name} ${userData.surname}`,
+              phone_number: userData.phone_number,
+            },
+          },
+          access_token: 'dev_token',
+          refresh_token: 'dev_refresh_token',
+        };
+      }
+    } catch (error) {
+      console.error('Error reading dev session:', error);
+    }
+  }
+  
   const { data: { session } } = await supabase.auth.getSession();
   return session;
 }
