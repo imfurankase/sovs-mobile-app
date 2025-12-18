@@ -57,60 +57,78 @@ export default function IdentityVerificationScreen() {
       const photo = await cameraRef.current.takePictureAsync();
       
       if (captureStep === 'selfie') {
-        setSelfieUri(photo.uri);
+        const selfieUriValue = photo.uri;
+        setSelfieUri(selfieUriValue);
         setCaptureStep('id');
         setFacing('back');
       } else if (captureStep === 'id') {
-        setIdUri(photo.uri);
+        const idUriValue = photo.uri;
+        setIdUri(idUriValue);
         setCaptureStep('verifying');
-        await handleVerify();
+        
+        // Get the selfie URI from state, but use the current photo URI for ID
+        // We need to wait a moment for state to update, then verify
+        setTimeout(async () => {
+          const currentSelfie = selfieUri;
+          const currentId = idUriValue;
+          
+          if (!currentSelfie || !currentId) {
+            console.error('Missing images:', { currentSelfie, currentId });
+            setIsVerifying(false);
+            Alert.alert(t('common.error'), 'Missing images. Please try again.');
+            setCaptureStep('selfie');
+            setSelfieUri(null);
+            setIdUri(null);
+            setFacing('front');
+            return;
+          }
+
+          setIsVerifying(true);
+
+          try {
+            const result = await verifyIdentity({
+              selfieImage: currentSelfie,
+              idImage: currentId,
+            });
+
+            if (result.success && result.nationalIdNumber) {
+              setIsVerifying(false);
+              router.push({
+                pathname: '/register/government-data',
+                params: { nationalIdNumber: result.nationalIdNumber },
+              });
+            } else {
+              setIsVerifying(false);
+              Alert.alert(
+                t('registration.verificationFailed'),
+                t('registration.verificationFailedMessage'),
+                [
+                  {
+                    text: t('registration.tryAgain'),
+                    onPress: () => {
+                      setCaptureStep('selfie');
+                      setSelfieUri(null);
+                      setIdUri(null);
+                      setFacing('front');
+                    },
+                  },
+                ]
+              );
+            }
+          } catch (error) {
+            console.error('Verification error:', error);
+            setIsVerifying(false);
+            Alert.alert(t('common.error'), t('common.error'));
+            setCaptureStep('selfie');
+            setSelfieUri(null);
+            setIdUri(null);
+            setFacing('front');
+          }
+        }, 100);
       }
     } catch (error) {
+      console.error('Capture error:', error);
       Alert.alert(t('common.error'), t('common.error'));
-    }
-  };
-
-  const handleVerify = async () => {
-    if (!selfieUri || !idUri) return;
-
-    setIsVerifying(true);
-
-    try {
-      const result = await verifyIdentity({
-        selfieImage: selfieUri,
-        idImage: idUri,
-      });
-
-      if (result.success && result.nationalIdNumber) {
-        router.push({
-          pathname: '/register/government-data',
-          params: { nationalIdNumber: result.nationalIdNumber },
-        });
-      } else {
-        setIsVerifying(false);
-        Alert.alert(
-          t('registration.verificationFailed'),
-          t('registration.verificationFailedMessage'),
-          [
-            {
-              text: t('registration.tryAgain'),
-              onPress: () => {
-                setCaptureStep('selfie');
-                setSelfieUri(null);
-                setIdUri(null);
-                setFacing('front');
-              },
-            },
-          ]
-        );
-      }
-    } catch (error) {
-      setIsVerifying(false);
-      Alert.alert(t('common.error'), t('common.error'));
-      setCaptureStep('selfie');
-      setSelfieUri(null);
-      setIdUri(null);
-      setFacing('front');
     }
   };
 

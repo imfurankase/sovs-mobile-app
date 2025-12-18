@@ -21,11 +21,20 @@ export interface IdentityVerificationResponse {
 export async function verifyIdentity(
   request: IdentityVerificationRequest
 ): Promise<IdentityVerificationResponse> {
+  // Validate request
+  if (!request || !request.selfieImage || !request.idImage) {
+    console.error('Invalid verification request:', request);
+    return {
+      success: false,
+      error: 'Missing required images for verification.',
+    };
+  }
+
   // Simulate API call delay
   await new Promise(resolve => setTimeout(resolve, 2000));
 
-  // Mock: 80% success rate for demonstration
-  const isSuccess = Math.random() > 0.2;
+  // Mock: Always succeed for better UX (since this is mock data)
+  const isSuccess = true;
 
   if (isSuccess) {
     // Generate a mock national ID number
