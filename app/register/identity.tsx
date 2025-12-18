@@ -3,7 +3,7 @@ import { StyleSheet, Text, View, Pressable, Alert, ActivityIndicator } from 'rea
 import { useRouter } from 'expo-router';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { Camera, Shield, Loader, Languages } from 'lucide-react-native';
-import { verifyIdentity } from '@/services/mockIdentityVerification';
+import { verifyIdentityWithDidit } from '@/services/diditVerification';
 import { useTranslation } from '@/contexts/LanguageContext';
 
 export default function IdentityVerificationScreen() {
@@ -86,22 +86,53 @@ export default function IdentityVerificationScreen() {
           setIsVerifying(true);
 
           try {
-            const result = await verifyIdentity({
-              selfieImage: currentSelfie,
-              idImage: currentId,
+            const result = await verifyIdentityWithDidit({
+              frontImage: currentId,
+              backImage: currentId, // Use same image for back if needed
+              performDocumentLiveness: false,
             });
 
-            if (result.success && result.nationalIdNumber) {
+            if (result.success && result.data) {
               setIsVerifying(false);
+              
+              // Check for critical warnings
+              if (result.critical_warnings) {
+                Alert.alert(
+                  t('registration.verificationFailed'),
+                  'Some critical information could not be detected from the document. Please ensure the image is clear and try again.',
+                  [
+                    {
+                      text: t('registration.tryAgain'),
+                      onPress: () => {
+                        setCaptureStep('selfie');
+                        setSelfieUri(null);
+                        setIdUri(null);
+                        setFacing('front');
+                      },
+                    },
+                  ]
+                );
+                return;
+              }
+
+              // Navigate to confirmation screen with Didit data
               router.push({
-                pathname: '/register/government-data',
-                params: { nationalIdNumber: result.nationalIdNumber },
+                pathname: '/register/confirm',
+                params: {
+                  firstName: result.data.first_name || '',
+                  lastName: result.data.last_name || '',
+                  dateOfBirth: result.data.date_of_birth || '',
+                  phoneNumber: '', // Will need to be entered separately or from document
+                  email: '', // Will need to be entered separately
+                  documentNumber: result.data.document_number || '',
+                  diditData: JSON.stringify(result.data), // Store full Didit response
+                },
               });
             } else {
               setIsVerifying(false);
               Alert.alert(
                 t('registration.verificationFailed'),
-                t('registration.verificationFailedMessage'),
+                result.error || t('registration.verificationFailedMessage'),
                 [
                   {
                     text: t('registration.tryAgain'),
@@ -115,10 +146,10 @@ export default function IdentityVerificationScreen() {
                 ]
               );
             }
-          } catch (error) {
+          } catch (error: any) {
             console.error('Verification error:', error);
             setIsVerifying(false);
-            Alert.alert(t('common.error'), t('common.error'));
+            Alert.alert(t('common.error'), error.message || t('common.error'));
             setCaptureStep('selfie');
             setSelfieUri(null);
             setIdUri(null);

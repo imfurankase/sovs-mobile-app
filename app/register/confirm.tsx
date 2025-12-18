@@ -15,23 +15,30 @@ export default function ConfirmRegistrationScreen() {
   const params = useLocalSearchParams();
 
   const [isCreating, setIsCreating] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState(params.phoneNumber as string || '');
+  const [email, setEmail] = useState(params.email as string || '');
 
   const userData = {
     firstName: params.firstName as string,
     lastName: params.lastName as string,
     dateOfBirth: params.dateOfBirth as string,
-    phoneNumber: params.phoneNumber as string,
-    email: params.email as string || undefined,
+    phoneNumber: phoneNumber,
+    email: email || undefined,
   };
 
   const handleCreateAccount = async () => {
+    if (!phoneNumber.trim()) {
+      Alert.alert(t('common.error'), t('registration.phoneNumber') + ' is required');
+      return;
+    }
+
     setIsCreating(true);
 
     try {
       // Register user with Supabase Auth and add to users table
       const result = await registerUser({
-        phoneNumber: userData.phoneNumber,
-        email: userData.email || undefined,
+        phoneNumber: phoneNumber.trim(),
+        email: email.trim() || undefined,
         name: userData.firstName,
         surname: userData.lastName,
         dateOfBirth: userData.dateOfBirth,
@@ -113,17 +120,42 @@ export default function ConfirmRegistrationScreen() {
                 </View>
               </View>
 
-              {userData.email && (
-                <View style={styles.infoRow}>
-                  <View style={styles.infoIcon}>
-                    <Mail size={18} color="#667eea" strokeWidth={2} />
-                  </View>
-                  <View style={styles.infoContent}>
-                    <Text style={styles.infoLabel}>{t('registration.email')}</Text>
-                    <Text style={styles.infoValue}>{userData.email}</Text>
-                  </View>
+              <View style={styles.infoRow}>
+                <View style={styles.infoIcon}>
+                  <Phone size={18} color="#667eea" strokeWidth={2} />
                 </View>
-              )}
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>{t('registration.phoneNumber')}</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder={t('registration.phoneNumber')}
+                    placeholderTextColor="#999"
+                    value={phoneNumber}
+                    onChangeText={setPhoneNumber}
+                    keyboardType="phone-pad"
+                    autoComplete="tel"
+                  />
+                </View>
+              </View>
+
+              <View style={styles.infoRow}>
+                <View style={styles.infoIcon}>
+                  <Mail size={18} color="#667eea" strokeWidth={2} />
+                </View>
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>{t('registration.email')} ({t('registration.optional')})</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder={t('registration.emailPlaceholder')}
+                    placeholderTextColor="#999"
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoComplete="email"
+                  />
+                </View>
+              </View>
 
               <View style={[styles.infoRow, styles.lastRow]}>
                 <View style={styles.infoIcon}>
@@ -308,6 +340,15 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600',
     color: '#1a1a1a',
+  },
+  input: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    borderBottomWidth: 2,
+    borderBottomColor: '#667eea',
+    paddingVertical: 4,
+    marginTop: 4,
   },
   verificationCard: {
     backgroundColor: '#f0fdf4',
