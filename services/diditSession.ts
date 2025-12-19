@@ -21,4 +21,3 @@ export async function getDiditSessionResults(sessionId: string) {
     throw new Error(error.message || 'Failed to retrieve session results');
   }
 }
-

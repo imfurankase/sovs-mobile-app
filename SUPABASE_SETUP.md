@@ -110,4 +110,3 @@ To test the integration:
 - Password hashing is handled by Supabase Auth
 - Sensitive fields (`password_hash`, `two_factor_secret`) are never exposed to the client
 - All API calls use SERVICE_ROLE_KEY to bypass RLS (configured in cloud functions)
-
