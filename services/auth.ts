@@ -53,9 +53,11 @@ export async function registerUser(data: {
     // Use email if available, otherwise create a placeholder email for phone-based auth
     const authEmail = data.email || `${data.phoneNumber.replace(/[^0-9]/g, '')}@sovs.local`;
 
+    // Create user in Supabase Auth with email and password
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: authEmail,
       password: data.password,
+      phone: data.phoneNumber, // Also set phone number for OTP login
       options: {
         data: {
           name: `${data.name} ${data.surname}`,
@@ -66,10 +68,36 @@ export async function registerUser(data: {
     });
 
     if (authError) {
-      // If auth user already exists, try to sign in instead
-      if (authError.message.includes('already registered')) {
-        // User exists, try to update password or just continue
-        console.log('Auth user already exists, but user record created successfully');
+      // If auth user already exists, check if we can update it
+      if (authError.message.includes('already registered') || authError.message.includes('User already registered')) {
+        console.log('Auth user already exists, attempting to update phone number');
+        
+        // Try to sign in and update phone number
+        try {
+          const { error: signInError } = await supabase.auth.signInWithPassword({
+            email: authEmail,
+            password: data.password,
+          });
+          
+          if (!signInError && authData?.user) {
+            // Update user metadata with phone number
+            const { error: updateError } = await supabase.auth.updateUser({
+              phone: data.phoneNumber,
+              data: {
+                phone_number: data.phoneNumber,
+                user_id: userId,
+              },
+            });
+            
+            if (updateError) {
+              console.warn('Could not update phone number:', updateError.message);
+            }
+          }
+        } catch (updateErr) {
+          console.warn('Could not update existing auth user:', updateErr);
+        }
+        
+        // User record was created successfully, return success
         return { success: true, userId };
       }
       
@@ -77,6 +105,8 @@ export async function registerUser(data: {
       return { success: false, error: authError.message };
     }
 
+    // User created successfully in both database and Supabase Auth
+    console.log('User created successfully in database and Supabase Auth');
     return { success: true, userId };
   } catch (error: any) {
     return { success: false, error: error.message || 'Registration failed' };
@@ -84,7 +114,8 @@ export async function registerUser(data: {
 }
 
 // Development mode: Set to true to use mock OTP (bypasses Supabase Auth)
-const USE_MOCK_OTP = true; // Change to false when SMS/Email providers are configured
+// Set to false to use real Supabase Auth OTP (requires SMS/Email providers configured)
+const USE_MOCK_OTP = false; // Using real Supabase Auth OTP
 
 // In-memory storage for mock OTPs (for development/testing)
 const mockOTPStore: Record<string, { code: string; expiresAt: number }> = {};
@@ -112,13 +143,16 @@ export async function sendOTP(phoneOrEmail: string): Promise<{ success: boolean;
       };
     }
 
-    // Production mode: Use Supabase Auth
+    // Production mode: Use Supabase Auth OTP
     const isEmail = phoneOrEmail.includes('@');
     
     if (isEmail) {
-      // Send magic link for email
+      // Send OTP for email
       const { error } = await supabase.auth.signInWithOtp({
         email: phoneOrEmail,
+        options: {
+          shouldCreateUser: false, // Don't create new users on login
+        },
       });
 
       if (error) {
@@ -130,6 +164,9 @@ export async function sendOTP(phoneOrEmail: string): Promise<{ success: boolean;
       // Send OTP for phone
       const { error } = await supabase.auth.signInWithOtp({
         phone: phoneOrEmail,
+        options: {
+          shouldCreateUser: false, // Don't create new users on login
+        },
       });
 
       if (error) {
@@ -202,7 +239,7 @@ export async function verifyOTP(
       return { success: true };
     }
 
-    // Production mode: Use Supabase Auth
+    // Production mode: Use Supabase Auth OTP verification
     const isEmail = phoneOrEmail.includes('@');
     
     if (isEmail) {
@@ -217,6 +254,11 @@ export async function verifyOTP(
         return { success: false, error: error.message };
       }
 
+      // OTP verified successfully, user is now signed in
+      if (data?.session) {
+        console.log('User signed in successfully via email OTP');
+      }
+
       return { success: true };
     } else {
       // For phone, token is the OTP code
@@ -228,6 +270,11 @@ export async function verifyOTP(
 
       if (error) {
         return { success: false, error: error.message };
+      }
+
+      // OTP verified successfully, user is now signed in
+      if (data?.session) {
+        console.log('User signed in successfully via phone OTP');
       }
 
       return { success: true };

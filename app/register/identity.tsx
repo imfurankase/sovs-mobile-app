@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, Pressable, Alert, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View, Pressable, Alert, ActivityIndicator, Dimensions, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { Shield, Loader, Languages, ExternalLink } from 'lucide-react-native';
 import { createDiditSession, getDiditSessionResults } from '@/services/diditSession';
 import { useTranslation } from '@/contexts/LanguageContext';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function IdentityVerificationScreen() {
   const router = useRouter();
@@ -162,7 +164,7 @@ export default function IdentityVerificationScreen() {
           <Text style={styles.subtitle}>{t('registration.verifying')}</Text>
         </View>
 
-        <View style={styles.verifyingContainer}>
+        <ScrollView contentContainerStyle={styles.verifyingContainer}>
           <View style={styles.verifyingIconContainer}>
             <View style={styles.verifyingIconCircle}>
               <Loader size={48} color="#667eea" strokeWidth={2} />
@@ -174,7 +176,7 @@ export default function IdentityVerificationScreen() {
             {'\n'}
             Please complete the verification in the browser window.
           </Text>
-        </View>
+        </ScrollView>
       </View>
     );
   }
@@ -196,10 +198,13 @@ export default function IdentityVerificationScreen() {
         </Text>
       </View>
 
-      <View style={styles.content}>
+      <ScrollView 
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.iconContainer}>
           <View style={styles.iconCircle}>
-            <Shield size={64} color="#667eea" strokeWidth={2} />
+            <Shield size={SCREEN_WIDTH < 375 ? 48 : 64} color="#667eea" strokeWidth={2} />
           </View>
         </View>
 
@@ -236,7 +241,7 @@ export default function IdentityVerificationScreen() {
             </>
           )}
         </Pressable>
-      </View>
+      </ScrollView>
     </View>
   );
 }
@@ -247,8 +252,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8f9fa',
   },
   header: {
-    padding: 32,
-    paddingTop: 60,
+    padding: SCREEN_WIDTH < 375 ? 20 : 32,
+    paddingTop: SCREEN_WIDTH < 375 ? 50 : 60,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
@@ -284,30 +289,31 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   title: {
-    fontSize: 28,
+    fontSize: SCREEN_WIDTH < 375 ? 24 : 28,
     fontWeight: '800',
     color: '#1a1a1a',
     marginBottom: 12,
     letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: SCREEN_WIDTH < 375 ? 14 : 16,
     color: '#666',
     lineHeight: 24,
   },
   content: {
-    flex: 1,
-    padding: 32,
+    flexGrow: 1,
+    padding: SCREEN_WIDTH < 375 ? 20 : 32,
+    paddingBottom: SCREEN_WIDTH < 375 ? 24 : 32,
     justifyContent: 'center',
     alignItems: 'center',
   },
   iconContainer: {
-    marginBottom: 32,
+    marginBottom: SCREEN_WIDTH < 375 ? 24 : 32,
   },
   iconCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: SCREEN_WIDTH < 375 ? 100 : 120,
+    height: SCREEN_WIDTH < 375 ? 100 : 120,
+    borderRadius: SCREEN_WIDTH < 375 ? 50 : 60,
     backgroundColor: '#f0f4ff',
     justifyContent: 'center',
     alignItems: 'center',
@@ -315,48 +321,49 @@ const styles = StyleSheet.create({
     borderColor: '#667eea',
   },
   description: {
-    fontSize: 16,
+    fontSize: SCREEN_WIDTH < 375 ? 14 : 16,
     color: '#666',
     textAlign: 'center',
-    marginBottom: 32,
+    marginBottom: SCREEN_WIDTH < 375 ? 24 : 32,
     lineHeight: 24,
+    paddingHorizontal: SCREEN_WIDTH < 375 ? 8 : 0,
   },
   stepsList: {
     width: '100%',
-    marginBottom: 40,
+    marginBottom: SCREEN_WIDTH < 375 ? 32 : 40,
   },
   stepItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
-    padding: 16,
+    marginBottom: 16,
+    padding: SCREEN_WIDTH < 375 ? 12 : 16,
     backgroundColor: '#fff',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#f0f0f0',
   },
   stepNumber: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: SCREEN_WIDTH < 375 ? 28 : 32,
+    height: SCREEN_WIDTH < 375 ? 28 : 32,
+    borderRadius: SCREEN_WIDTH < 375 ? 14 : 16,
     backgroundColor: '#667eea',
     color: '#fff',
-    fontSize: 16,
+    fontSize: SCREEN_WIDTH < 375 ? 14 : 16,
     fontWeight: '700',
     textAlign: 'center',
-    lineHeight: 32,
-    marginRight: 16,
+    lineHeight: SCREEN_WIDTH < 375 ? 28 : 32,
+    marginRight: 12,
   },
   stepText: {
     flex: 1,
-    fontSize: 16,
+    fontSize: SCREEN_WIDTH < 375 ? 14 : 16,
     fontWeight: '600',
     color: '#1a1a1a',
   },
   button: {
     backgroundColor: '#667eea',
     borderRadius: 16,
-    padding: 18,
+    padding: SCREEN_WIDTH < 375 ? 16 : 18,
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
@@ -367,30 +374,32 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
+    minHeight: 56,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
   buttonText: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: SCREEN_WIDTH < 375 ? 16 : 18,
     fontWeight: '700',
     letterSpacing: 0.5,
   },
   verifyingContainer: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 32,
+    padding: SCREEN_WIDTH < 375 ? 20 : 32,
     backgroundColor: '#fff',
+    minHeight: '100%',
   },
   verifyingIconContainer: {
-    marginBottom: 32,
+    marginBottom: SCREEN_WIDTH < 375 ? 24 : 32,
   },
   verifyingIconCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: SCREEN_WIDTH < 375 ? 100 : 120,
+    height: SCREEN_WIDTH < 375 ? 100 : 120,
+    borderRadius: SCREEN_WIDTH < 375 ? 50 : 60,
     backgroundColor: '#f0f4ff',
     justifyContent: 'center',
     alignItems: 'center',
@@ -398,16 +407,18 @@ const styles = StyleSheet.create({
     borderColor: '#667eea',
   },
   verifyingText: {
-    fontSize: 24,
+    fontSize: SCREEN_WIDTH < 375 ? 20 : 24,
     fontWeight: '700',
     color: '#1a1a1a',
     marginBottom: 12,
     textAlign: 'center',
+    paddingHorizontal: SCREEN_WIDTH < 375 ? 16 : 0,
   },
   verifyingSubtext: {
-    fontSize: 16,
+    fontSize: SCREEN_WIDTH < 375 ? 14 : 16,
     color: '#666',
     textAlign: 'center',
     lineHeight: 24,
+    paddingHorizontal: SCREEN_WIDTH < 375 ? 16 : 0,
   },
 });

@@ -1,18 +1,20 @@
-import { useState } from 'react';
-import { StyleSheet, Text, View, TextInput, Pressable, Alert, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { useState, useMemo, useCallback } from 'react';
+import { StyleSheet, Text, View, TextInput, Pressable, Alert, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform, Dimensions } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Lock, Eye, EyeOff, Languages, ArrowRight } from 'lucide-react-native';
 import { registerUser } from '@/services/auth';
 import { useTranslation } from '@/contexts/LanguageContext';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function PasswordSetupScreen() {
   const router = useRouter();
   const { t, language, setLanguage } = useTranslation();
   const params = useLocalSearchParams();
 
-  const toggleLanguage = () => {
+  const toggleLanguage = useCallback(() => {
     setLanguage(language === 'en' ? 'tr' : 'en');
-  };
+  }, [language, setLanguage]);
 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -22,15 +24,15 @@ export default function PasswordSetupScreen() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [email, setEmail] = useState('');
 
-  const userData = {
+  const userData = useMemo(() => ({
     sessionId: params.sessionId as string,
     firstName: params.firstName as string,
     lastName: params.lastName as string,
     dateOfBirth: params.dateOfBirth as string,
     documentNumber: params.documentNumber as string || '',
-  };
+  }), [params.sessionId, params.firstName, params.lastName, params.dateOfBirth, params.documentNumber]);
 
-  const handleCreateAccount = async () => {
+  const handleCreateAccount = useCallback(async () => {
     // Validation
     if (!phoneNumber.trim()) {
       Alert.alert(t('common.error'), 'Phone number is required');
@@ -75,7 +77,7 @@ export default function PasswordSetupScreen() {
       Alert.alert(t('common.error'), error.message || t('common.error'));
       setIsCreating(false);
     }
-  };
+  }, [phoneNumber, password, confirmPassword, email, userData, t, router]);
 
   return (
     <KeyboardAvoidingView
@@ -136,9 +138,12 @@ export default function PasswordSetupScreen() {
                 placeholder="+1234567890"
                 placeholderTextColor="#999"
                 value={phoneNumber}
-                onChangeText={setPhoneNumber}
+                onChangeText={(text) => setPhoneNumber(text)}
                 keyboardType="phone-pad"
                 autoComplete="tel"
+                autoCorrect={false}
+                textContentType="telephoneNumber"
+                editable={!isCreating}
               />
             </View>
 
@@ -149,10 +154,13 @@ export default function PasswordSetupScreen() {
                 placeholder="user@example.com"
                 placeholderTextColor="#999"
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={(text) => setEmail(text)}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoComplete="email"
+                autoCorrect={false}
+                textContentType="emailAddress"
+                editable={!isCreating}
               />
             </View>
           </View>
@@ -168,14 +176,18 @@ export default function PasswordSetupScreen() {
                   placeholder="Enter password (min 8 characters)"
                   placeholderTextColor="#999"
                   value={password}
-                  onChangeText={setPassword}
+                  onChangeText={(text) => setPassword(text)}
                   secureTextEntry={!showPassword}
                   autoCapitalize="none"
                   autoComplete="password-new"
+                  autoCorrect={false}
+                  textContentType="newPassword"
+                  editable={!isCreating}
                 />
                 <Pressable
                   style={styles.eyeButton}
                   onPress={() => setShowPassword(!showPassword)}
+                  disabled={isCreating}
                 >
                   {showPassword ? (
                     <EyeOff size={20} color="#666" strokeWidth={2} />
@@ -194,14 +206,18 @@ export default function PasswordSetupScreen() {
                   placeholder="Confirm your password"
                   placeholderTextColor="#999"
                   value={confirmPassword}
-                  onChangeText={setConfirmPassword}
+                  onChangeText={(text) => setConfirmPassword(text)}
                   secureTextEntry={!showConfirmPassword}
                   autoCapitalize="none"
                   autoComplete="password-new"
+                  autoCorrect={false}
+                  textContentType="newPassword"
+                  editable={!isCreating}
                 />
                 <Pressable
                   style={styles.eyeButton}
                   onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                  disabled={isCreating}
                 >
                   {showConfirmPassword ? (
                     <EyeOff size={20} color="#666" strokeWidth={2} />
@@ -243,8 +259,8 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   header: {
-    padding: 32,
-    paddingTop: 60,
+    padding: SCREEN_WIDTH < 375 ? 20 : 32,
+    paddingTop: SCREEN_WIDTH < 375 ? 50 : 60,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
@@ -280,24 +296,24 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   title: {
-    fontSize: 28,
+    fontSize: SCREEN_WIDTH < 375 ? 24 : 28,
     fontWeight: '800',
     color: '#1a1a1a',
     marginBottom: 12,
     letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: SCREEN_WIDTH < 375 ? 14 : 16,
     color: '#666',
     lineHeight: 24,
   },
   content: {
-    padding: 32,
+    padding: SCREEN_WIDTH < 375 ? 20 : 32,
   },
   infoCard: {
     backgroundColor: '#fff',
     borderRadius: 24,
-    padding: 24,
+    padding: SCREEN_WIDTH < 375 ? 16 : 24,
     marginBottom: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -354,7 +370,7 @@ const styles = StyleSheet.create({
   formCard: {
     backgroundColor: '#fff',
     borderRadius: 24,
-    padding: 24,
+    padding: SCREEN_WIDTH < 375 ? 16 : 24,
     marginBottom: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -365,7 +381,7 @@ const styles = StyleSheet.create({
     borderColor: '#f0f0f0',
   },
   formTitle: {
-    fontSize: 20,
+    fontSize: SCREEN_WIDTH < 375 ? 18 : 20,
     fontWeight: '700',
     color: '#1a1a1a',
     marginBottom: 20,
@@ -374,7 +390,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   inputLabel: {
-    fontSize: 14,
+    fontSize: SCREEN_WIDTH < 375 ? 13 : 14,
     fontWeight: '600',
     color: '#1a1a1a',
     marginBottom: 8,
@@ -382,11 +398,12 @@ const styles = StyleSheet.create({
   input: {
     backgroundColor: '#f8f9fa',
     borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
+    padding: SCREEN_WIDTH < 375 ? 14 : 16,
+    fontSize: SCREEN_WIDTH < 375 ? 15 : 16,
     color: '#1a1a1a',
     borderWidth: 2,
     borderColor: '#f0f0f0',
+    minHeight: 50,
   },
   passwordInputContainer: {
     flexDirection: 'row',
@@ -398,9 +415,10 @@ const styles = StyleSheet.create({
   },
   passwordInput: {
     flex: 1,
-    padding: 16,
-    fontSize: 16,
+    padding: SCREEN_WIDTH < 375 ? 14 : 16,
+    fontSize: SCREEN_WIDTH < 375 ? 15 : 16,
     color: '#1a1a1a',
+    minHeight: 50,
   },
   eyeButton: {
     padding: 16,
@@ -408,7 +426,7 @@ const styles = StyleSheet.create({
   button: {
     backgroundColor: '#667eea',
     borderRadius: 16,
-    padding: 18,
+    padding: SCREEN_WIDTH < 375 ? 16 : 18,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
@@ -418,13 +436,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
+    minHeight: 56,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
   buttonText: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: SCREEN_WIDTH < 375 ? 16 : 18,
     fontWeight: '700',
     letterSpacing: 0.5,
   },
