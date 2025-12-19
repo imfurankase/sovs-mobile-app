@@ -14,38 +14,8 @@ export async function registerUser(data: {
   password?: string;
 }): Promise<{ success: boolean; userId?: string; error?: string }> {
   try {
-    // Step 1: Add user to users table via cloud function first
-    // This creates the user record in our database
-    let userId: string | undefined;
-    
-    try {
-      const userResponse = await usersAPI.create({
-        phone_number: data.phoneNumber,
-        email: data.email,
-        name: data.name,
-        surname: data.surname,
-        date_of_birth: data.dateOfBirth,
-        status: 'pending',
-      });
-      
-      userId = userResponse.user_id;
-    } catch (err: any) {
-      // Check if user already exists
-      if (err.message && err.message.includes('duplicate') || err.message.includes('unique')) {
-        // User already exists, try to get their ID
-        const existingUser = await usersAPI.getByPhoneOrEmail(data.phoneNumber);
-        if (existingUser) {
-          userId = existingUser.user_id;
-        } else {
-          return { success: false, error: 'User already exists but could not retrieve user ID' };
-        }
-      } else {
-        return { success: false, error: err.message || 'Failed to create user record' };
-      }
-    }
-
-    // Step 2: Create user in Supabase Auth for authentication
-    // Password is now required (user sets it during registration)
+    // Step 1: Create user in Supabase Auth FIRST to get the UUID
+    // Password is required (user sets it during registration)
     if (!data.password) {
       return { success: false, error: 'Password is required' };
     }
@@ -62,52 +32,99 @@ export async function registerUser(data: {
         data: {
           name: `${data.name} ${data.surname}`,
           phone_number: data.phoneNumber,
-          user_id: userId, // Link to our users table
         },
       },
     });
 
     if (authError) {
-      // If auth user already exists, check if we can update it
+      // If auth user already exists, try to get the existing user
       if (authError.message.includes('already registered') || authError.message.includes('User already registered')) {
-        console.log('Auth user already exists, attempting to update phone number');
+        console.log('Auth user already exists, attempting to sign in to get user ID');
         
-        // Try to sign in and update phone number
+        // Try to sign in to get the user ID
         try {
-          const { error: signInError } = await supabase.auth.signInWithPassword({
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
             email: authEmail,
             password: data.password,
           });
           
-          if (!signInError && authData?.user) {
-            // Update user metadata with phone number
-            const { error: updateError } = await supabase.auth.updateUser({
-              phone: data.phoneNumber,
-              data: {
-                phone_number: data.phoneNumber,
-                user_id: userId,
-              },
-            });
+          if (!signInError && signInData?.user) {
+            const authUserId = signInData.user.id;
             
-            if (updateError) {
-              console.warn('Could not update phone number:', updateError.message);
+            // Check if user already exists in users table
+            const existingUser = await usersAPI.getByPhoneOrEmail(data.phoneNumber);
+            if (existingUser) {
+              // User exists, return success
+              return { success: true, userId: authUserId };
             }
+            
+            // User doesn't exist in users table, create it with the auth UUID
+            try {
+              await usersAPI.create({
+                user_id: authUserId, // Use Supabase Auth UUID
+                phone_number: data.phoneNumber,
+                email: data.email,
+                name: data.name,
+                surname: data.surname,
+                date_of_birth: data.dateOfBirth,
+                status: 'pending',
+              });
+              return { success: true, userId: authUserId };
+            } catch (createErr: any) {
+              return { success: false, error: createErr.message || 'Failed to create user record' };
+            }
+          } else {
+            return { success: false, error: signInError?.message || 'Failed to sign in existing user' };
           }
         } catch (updateErr) {
-          console.warn('Could not update existing auth user:', updateErr);
+          return { success: false, error: 'User already exists but could not retrieve user ID' };
         }
-        
-        // User record was created successfully, return success
-        return { success: true, userId };
       }
       
       // For other errors, return error
       return { success: false, error: authError.message };
     }
 
-    // User created successfully in both database and Supabase Auth
-    console.log('User created successfully in database and Supabase Auth');
-    return { success: true, userId };
+    // Step 2: Use the Supabase Auth UUID to create user in users table
+    if (!authData?.user?.id) {
+      return { success: false, error: 'Failed to get user ID from Supabase Auth' };
+    }
+
+    const authUserId = authData.user.id;
+
+    try {
+      // Create user in users table using the Supabase Auth UUID
+      await usersAPI.create({
+        user_id: authUserId, // Use Supabase Auth UUID as user_id
+        phone_number: data.phoneNumber,
+        email: data.email,
+        name: data.name,
+        surname: data.surname,
+        date_of_birth: data.dateOfBirth,
+        status: 'pending',
+      });
+    } catch (err: any) {
+      // Check if user already exists (might have been created in a previous attempt)
+      if (err.message && (err.message.includes('duplicate') || err.message.includes('unique'))) {
+        // User already exists in users table, that's okay - return success
+        console.log('User already exists in users table, continuing...');
+      } else {
+        // For other errors, we should clean up the auth user, but for now just return error
+        console.error('Failed to create user in users table:', err);
+        return { success: false, error: err.message || 'Failed to create user record' };
+      }
+    }
+
+    // Update auth user metadata with the user_id (for consistency)
+    await supabase.auth.updateUser({
+      data: {
+        user_id: authUserId,
+      },
+    });
+
+    // User created successfully in both Supabase Auth and users table with the same UUID
+    console.log('User created successfully in Supabase Auth and users table with UUID:', authUserId);
+    return { success: true, userId: authUserId };
   } catch (error: any) {
     return { success: false, error: error.message || 'Registration failed' };
   }
@@ -371,4 +388,3 @@ export async function getCurrentSession() {
   const { data: { session } } = await supabase.auth.getSession();
   return session;
 }
-

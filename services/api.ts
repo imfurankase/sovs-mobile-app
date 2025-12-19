@@ -54,6 +54,7 @@ export const usersAPI = {
    * Create a new user in the users table
    */
   create: async (userData: {
+    user_id?: string; // Optional: if provided, use this UUID (from Supabase Auth)
     phone_number: string;
     email?: string;
     name: string;
@@ -152,4 +153,3 @@ export const diditSessionAPI = {
     });
   },
 };
-
