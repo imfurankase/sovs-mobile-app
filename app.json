@@ -23,7 +23,8 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "usesCleartextTraffic": true
     },
     "web": {
       "bundler": "metro",
@@ -39,7 +40,8 @@
         {
           "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera to verify your identity by taking a selfie and photo of your government ID."
         }
-      ]
+      ],
+      "./app.plugin.js"
     ],
     "experiments": {
       "typedRoutes": true
