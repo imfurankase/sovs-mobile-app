@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { StyleSheet, Text, View, TextInput, Pressable, Alert, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform, Dimensions } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Lock, Eye, EyeOff, Languages, ArrowRight } from 'lucide-react-native';
@@ -23,6 +23,8 @@ export default function PasswordSetupScreen() {
   const [isCreating, setIsCreating] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [email, setEmail] = useState('');
+  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollY = useRef(0);
 
   const userData = useMemo(() => ({
     sessionId: params.sessionId as string,
@@ -79,17 +81,42 @@ export default function PasswordSetupScreen() {
     }
   }, [phoneNumber, password, confirmPassword, email, userData, t, router]);
 
+  const Container = Platform.OS === 'web' ? View : KeyboardAvoidingView;
+  const containerProps = Platform.OS === 'web' 
+    ? { style: styles.container }
+    : { style: styles.container, behavior: Platform.OS === 'ios' ? 'padding' : 'height' };
+
+  // Track scroll position on web to prevent unwanted resets
+  const handleScroll = useCallback((event: any) => {
+    if (Platform.OS === 'web') {
+      scrollY.current = event.nativeEvent.contentOffset.y;
+    }
+  }, []);
+
+  // Prevent scroll reset on web when focusing inputs
+  const handleInputFocus = useCallback(() => {
+    if (Platform.OS === 'web') {
+      // Restore scroll position after a brief delay to prevent browser auto-scroll
+      setTimeout(() => {
+        if (scrollViewRef.current && scrollY.current > 0) {
+          scrollViewRef.current.scrollTo({ y: scrollY.current, animated: false });
+        }
+      }, 100);
+    }
+  }, []);
+
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
+    <Container {...containerProps}>
       <ScrollView 
+        ref={scrollViewRef}
         contentContainerStyle={styles.scrollContent} 
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         nestedScrollEnabled={true}
+        scrollEventThrottle={16}
+        onScroll={handleScroll}
+        scrollEnabled={true}
       >
         <View style={styles.header}>
           <View style={styles.headerTop}>
@@ -145,6 +172,7 @@ export default function PasswordSetupScreen() {
                 placeholderTextColor="#999"
                 value={phoneNumber}
                 onChangeText={(text) => setPhoneNumber(text)}
+                onFocus={handleInputFocus}
                 keyboardType="phone-pad"
                 autoComplete="tel"
                 autoCorrect={false}
@@ -161,6 +189,7 @@ export default function PasswordSetupScreen() {
                 placeholderTextColor="#999"
                 value={email}
                 onChangeText={(text) => setEmail(text)}
+                onFocus={handleInputFocus}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoComplete="email"
@@ -183,6 +212,7 @@ export default function PasswordSetupScreen() {
                   placeholderTextColor="#999"
                   value={password}
                   onChangeText={(text) => setPassword(text)}
+                  onFocus={handleInputFocus}
                   secureTextEntry={!showPassword}
                   autoCapitalize="none"
                   autoComplete="password-new"
@@ -213,6 +243,7 @@ export default function PasswordSetupScreen() {
                   placeholderTextColor="#999"
                   value={confirmPassword}
                   onChangeText={(text) => setConfirmPassword(text)}
+                  onFocus={handleInputFocus}
                   secureTextEntry={!showConfirmPassword}
                   autoCapitalize="none"
                   autoComplete="password-new"
@@ -251,7 +282,7 @@ export default function PasswordSetupScreen() {
           </Pressable>
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </Container>
   );
 }
 
