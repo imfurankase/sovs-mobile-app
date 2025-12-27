@@ -90,3 +90,4 @@ If you encounter issues:
 4. Check EAS status: https://expo.dev/accounts/[your-account]/projects/sovs/builds
 
 
+

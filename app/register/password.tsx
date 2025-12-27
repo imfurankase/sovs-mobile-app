@@ -1,11 +1,25 @@
-import { useState, useMemo, useCallback, useRef } from 'react';
-import { StyleSheet, Text, View, TextInput, Pressable, Alert, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform, Dimensions } from 'react-native';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import {
+  StyleSheet,
+  Text,
+  View,
+  TextInput,
+  Pressable,
+  Alert,
+  ActivityIndicator,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  Dimensions,
+} from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Lock, Eye, EyeOff, Languages, ArrowRight } from 'lucide-react-native';
 import { registerUser } from '@/services/auth';
 import { useTranslation } from '@/contexts/LanguageContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const FORM_STORAGE_KEY = '@password_form_data';
 
 export default function PasswordSetupScreen() {
   const router = useRouter();
@@ -25,14 +39,77 @@ export default function PasswordSetupScreen() {
   const [email, setEmail] = useState('');
   const scrollViewRef = useRef<ScrollView>(null);
   const scrollY = useRef(0);
+  const isInitialLoad = useRef(true);
 
-  const userData = useMemo(() => ({
-    sessionId: params.sessionId as string,
-    firstName: params.firstName as string,
-    lastName: params.lastName as string,
-    dateOfBirth: params.dateOfBirth as string,
-    documentNumber: params.documentNumber as string || '',
-  }), [params.sessionId, params.firstName, params.lastName, params.dateOfBirth, params.documentNumber]);
+  // Load persisted form data on mount
+  useEffect(() => {
+    const loadPersistedData = async () => {
+      try {
+        const storedData = await AsyncStorage.getItem(FORM_STORAGE_KEY);
+        if (storedData) {
+          const parsed = JSON.parse(storedData);
+          // Only restore if we have a matching sessionId
+          if (parsed.sessionId === params.sessionId) {
+            setPhoneNumber(parsed.phoneNumber || '');
+            setEmail(parsed.email || '');
+            setPassword(parsed.password || '');
+            setConfirmPassword(parsed.confirmPassword || '');
+          } else {
+            // Clear old data if sessionId doesn't match
+            await AsyncStorage.removeItem(FORM_STORAGE_KEY);
+          }
+        }
+      } catch (error) {
+        // Ignore errors, just start with empty form
+      } finally {
+        isInitialLoad.current = false;
+      }
+    };
+    loadPersistedData();
+  }, [params.sessionId]);
+
+  // Persist form data whenever it changes (debounced)
+  useEffect(() => {
+    if (isInitialLoad.current) return; // Don't save on initial load
+
+    const saveData = async () => {
+      try {
+        await AsyncStorage.setItem(
+          FORM_STORAGE_KEY,
+          JSON.stringify({
+            sessionId: params.sessionId,
+            phoneNumber,
+            email,
+            password,
+            confirmPassword,
+          })
+        );
+      } catch (error) {
+        // Ignore storage errors
+      }
+    };
+
+    // Debounce saves to avoid too frequent writes
+    const timeoutId = setTimeout(saveData, 500);
+    return () => clearTimeout(timeoutId);
+  }, [phoneNumber, email, password, confirmPassword, params.sessionId]);
+
+  const userData = useMemo(
+    () => ({
+      sessionId: params.sessionId as string,
+      firstName: params.firstName as string,
+      lastName: params.lastName as string,
+      dateOfBirth: params.dateOfBirth as string,
+      documentNumber: (params.documentNumber as string) || '',
+    }),
+    [
+      params.sessionId,
+      params.firstName,
+      params.lastName,
+      params.dateOfBirth,
+      params.documentNumber,
+    ]
+  );
 
   const handleCreateAccount = useCallback(async () => {
     // Validation
@@ -47,7 +124,10 @@ export default function PasswordSetupScreen() {
     }
 
     if (password.length < 8) {
-      Alert.alert(t('common.error'), 'Password must be at least 8 characters long');
+      Alert.alert(
+        t('common.error'),
+        'Password must be at least 8 characters long'
+      );
       return;
     }
 
@@ -70,6 +150,8 @@ export default function PasswordSetupScreen() {
       });
 
       if (result.success) {
+        // Clear persisted form data on success
+        await AsyncStorage.removeItem(FORM_STORAGE_KEY);
         router.replace('/register/success');
       } else {
         Alert.alert(t('common.error'), result.error || t('common.error'));
@@ -82,9 +164,15 @@ export default function PasswordSetupScreen() {
   }, [phoneNumber, password, confirmPassword, email, userData, t, router]);
 
   const Container = Platform.OS === 'web' ? View : KeyboardAvoidingView;
-  const containerProps = Platform.OS === 'web' 
-    ? { style: styles.container }
-    : { style: styles.container, behavior: Platform.OS === 'ios' ? 'padding' : 'height' };
+  const containerProps =
+    Platform.OS === 'web'
+      ? { style: styles.container }
+      : {
+          style: styles.container,
+          behavior: (Platform.OS === 'ios' ? 'padding' : 'height') as
+            | 'padding'
+            | 'height',
+        };
 
   // Track scroll position on web to prevent unwanted resets
   const handleScroll = useCallback((event: any) => {
@@ -99,7 +187,10 @@ export default function PasswordSetupScreen() {
       // Restore scroll position after a brief delay to prevent browser auto-scroll
       setTimeout(() => {
         if (scrollViewRef.current && scrollY.current > 0) {
-          scrollViewRef.current.scrollTo({ y: scrollY.current, animated: false });
+          scrollViewRef.current.scrollTo({
+            y: scrollY.current,
+            animated: false,
+          });
         }
       }, 100);
     }
@@ -107,9 +198,9 @@ export default function PasswordSetupScreen() {
 
   return (
     <Container {...containerProps}>
-      <ScrollView 
+      <ScrollView
         ref={scrollViewRef}
-        contentContainerStyle={styles.scrollContent} 
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
@@ -121,7 +212,9 @@ export default function PasswordSetupScreen() {
         <View style={styles.header}>
           <View style={styles.headerTop}>
             <View style={styles.stepBadge}>
-              <Text style={styles.stepBadgeText}>{t('registration.step2')}</Text>
+              <Text style={styles.stepBadgeText}>
+                {t('registration.step2')}
+              </Text>
             </View>
             <Pressable style={styles.languageButton} onPress={toggleLanguage}>
               <Languages size={20} color="#667eea" strokeWidth={2} />
@@ -145,17 +238,22 @@ export default function PasswordSetupScreen() {
             <View style={styles.infoSection}>
               <View style={styles.fieldRow}>
                 <Text style={styles.fieldLabel}>Name</Text>
-                <Text style={styles.fieldValue}>{userData.firstName} {userData.lastName}</Text>
+                <Text style={styles.fieldValue}>
+                  {userData.firstName} {userData.lastName}
+                </Text>
               </View>
 
               <View style={styles.fieldRow}>
                 <Text style={styles.fieldLabel}>Date of Birth</Text>
                 <Text style={styles.fieldValue}>
-                  {new Date(userData.dateOfBirth).toLocaleDateString(language === 'tr' ? 'tr-TR' : 'en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                  })}
+                  {new Date(userData.dateOfBirth).toLocaleDateString(
+                    language === 'tr' ? 'tr-TR' : 'en-US',
+                    {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                    }
+                  )}
                 </Text>
               </View>
             </View>
