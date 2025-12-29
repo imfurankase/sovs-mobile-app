@@ -36,14 +36,24 @@ async function callFunction<T>(
     config.body = JSON.stringify(body);
   }
 
-  const response = await fetch(url, config);
+  try {
+    const response = await fetch(url, config);
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-    throw new Error(error.error || `HTTP error! status: ${response.status}`);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(error.error || `HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  } catch (error: any) {
+    // Handle network errors specifically
+    if (error.message === 'Network request failed' || error.message?.includes('NetworkError') || error.message?.includes('Failed to fetch')) {
+      console.error('Network request failed:', { url, method, error: error.message });
+      throw new Error(`Network request failed. Please check your internet connection and ensure the server is accessible. URL: ${url}`);
+    }
+    // Re-throw other errors
+    throw error;
   }
-
-  return response.json();
 }
 
 /**

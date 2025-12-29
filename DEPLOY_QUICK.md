@@ -42,3 +42,6 @@ vercel --prod dist  # or netlify deploy --prod --dir=dist
 - All bilingual features (EN/TR) work on web too
 
 
+
+
+

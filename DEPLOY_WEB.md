@@ -188,3 +188,6 @@ For automatic deployments on code changes:
 3. Set publish directory: `dist`
 4. Deployments will happen automatically on every push
 
+
+
+
