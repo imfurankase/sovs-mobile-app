@@ -133,13 +133,14 @@ export const diditSessionAPI = {
   /**
    * Create a Didit verification session
    */
-  create: async (vendorData?: string, metadata?: any, language?: string) => {
+  create: async (vendorData?: string, metadata?: any, language?: string, returnTo?: string) => {
     return callFunction('didit-create-session', {
       method: 'POST',
       body: {
         vendor_data: vendorData,
         metadata: metadata,
         language: language,
+        return_to: returnTo,
       },
     });
   },

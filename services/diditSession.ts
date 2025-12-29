@@ -3,9 +3,9 @@ import { diditSessionAPI } from './api';
 /**
  * Create a Didit verification session
  */
-export async function createDiditSession(vendorData?: string, metadata?: any, language?: string) {
+export async function createDiditSession(vendorData?: string, metadata?: any, language?: string, returnTo?: string) {
   try {
-    return await diditSessionAPI.create(vendorData, metadata, language);
+    return await diditSessionAPI.create(vendorData, metadata, language, returnTo);
   } catch (error: any) {
     throw new Error(error.message || 'Failed to create Didit session');
   }

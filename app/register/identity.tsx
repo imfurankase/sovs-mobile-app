@@ -2,11 +2,14 @@ import { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, Pressable, Alert, ActivityIndicator, Dimensions, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
 import { Shield, Loader, Languages, ExternalLink } from 'lucide-react-native';
 import { createDiditSession, getDiditSessionResults } from '@/services/diditSession';
 import { useTranslation } from '@/contexts/LanguageContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function IdentityVerificationScreen() {
   const router = useRouter();
@@ -101,12 +104,14 @@ export default function IdentityVerificationScreen() {
   const handleStartVerification = async () => {
     try {
       setIsCreatingSession(true);
+      const returnUrl = Linking.createURL('/register/identity');
       
       // Create Didit session
       const session = await createDiditSession(
         undefined, // vendor_data - can be user ID if available
         null, // metadata
-        language === 'tr' ? 'tr' : 'en' // language
+        language === 'tr' ? 'tr' : 'en', // language
+        returnUrl
       );
 
       if (!session.success || !session.url) {
@@ -117,20 +122,29 @@ export default function IdentityVerificationScreen() {
       setIsCreatingSession(false);
       setIsVerifying(true);
 
-      // Open Didit verification URL
-      const result = await WebBrowser.openBrowserAsync(session.url, {
-        presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
-      });
-
-      // Start polling for results after browser opens
+      // Start polling for results as soon as the session URL opens
+      let activeInterval: NodeJS.Timeout | null = null;
       if (session.session_id) {
-        const interval = setInterval(() => {
-          pollSessionResults(session.session_id);
+        activeInterval = setInterval(() => {
+          pollSessionResults(session.session_id!);
         }, 3000); // Poll every 3 seconds
-        setPollingInterval(interval);
+        setPollingInterval(activeInterval);
         
         // Also poll immediately
-        setTimeout(() => pollSessionResults(session.session_id), 2000);
+        setTimeout(() => pollSessionResults(session.session_id!), 2000);
+      }
+
+      // Open Didit verification URL and expect to return via deep link
+      const result = await WebBrowser.openAuthSessionAsync(session.url, returnUrl);
+
+      // If the user cancels the auth session, stop verifying so they can retry
+      if (result.type === 'cancel' || result.type === 'dismiss') {
+        if (activeInterval) {
+          clearInterval(activeInterval);
+        }
+        setPollingInterval(null);
+        setIsVerifying(false);
+        return;
       }
     } catch (error: any) {
       setIsCreatingSession(false);
