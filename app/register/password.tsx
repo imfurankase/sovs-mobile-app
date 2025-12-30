@@ -13,13 +13,36 @@ import {
   Dimensions,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Lock, Eye, EyeOff, Languages, ArrowRight } from 'lucide-react-native';
+import { Lock, Eye, EyeOff, Languages, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react-native';
 import { registerUser } from '@/services/auth';
 import { useTranslation } from '@/contexts/LanguageContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const FORM_STORAGE_KEY = '@password_form_data';
+
+// Password Requirement Component
+function PasswordRequirement({ label, met }: { label: string; met: boolean }) {
+  return (
+    <View style={styles.requirement}>
+      <View
+        style={[
+          styles.requirementIcon,
+          { backgroundColor: met ? '#e7f5e9' : '#f5f5f5' },
+        ]}
+      >
+        {met ? (
+          <CheckCircle2 size={16} color="#6bcf7f" strokeWidth={2.5} />
+        ) : (
+          <View style={styles.requirementCircle} />
+        )}
+      </View>
+      <Text style={[styles.requirementLabel, met && styles.requirementMet]}>
+        {label}
+      </Text>
+    </View>
+  );
+}
 
 export default function PasswordSetupScreen() {
   const router = useRouter();
@@ -40,6 +63,10 @@ export default function PasswordSetupScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
   const scrollY = useRef(0);
   const isInitialLoad = useRef(true);
+
+  // Password strength calculation
+  const [passwordStrength, setPasswordStrength] = useState(0);
+  const [passwordMatchError, setPasswordMatchError] = useState(false);
 
   // Load persisted form data on mount
   useEffect(() => {
@@ -67,6 +94,24 @@ export default function PasswordSetupScreen() {
     };
     loadPersistedData();
   }, [params.sessionId]);
+
+  // Calculate password strength
+  useEffect(() => {
+    let strength = 0;
+    if (password.length >= 8) strength++;
+    if (password.length >= 12) strength++;
+    if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength++;
+    if (/[0-9]/.test(password)) strength++;
+    if (/[^a-zA-Z0-9]/.test(password)) strength++;
+    setPasswordStrength(strength);
+
+    // Check if passwords match
+    if (confirmPassword && password !== confirmPassword) {
+      setPasswordMatchError(true);
+    } else {
+      setPasswordMatchError(false);
+    }
+  }, [password, confirmPassword]);
 
   // Persist form data whenever it changes (debounced)
   useEffect(() => {
@@ -299,7 +344,7 @@ export default function PasswordSetupScreen() {
           </View>
 
           <View style={styles.formCard}>
-            <Text style={styles.formTitle}>Password</Text>
+            <Text style={styles.formTitle}>Set Your Password</Text>
 
             <View style={styles.inputWrapper}>
               <Text style={styles.inputLabel}>Password *</Text>
@@ -330,11 +375,80 @@ export default function PasswordSetupScreen() {
                   )}
                 </Pressable>
               </View>
+
+              {/* Password Strength Indicator */}
+              {password.length > 0 && (
+                <View style={styles.strengthContainer}>
+                  <View style={styles.strengthBars}>
+                    {[0, 1, 2, 3, 4].map((index) => (
+                      <View
+                        key={index}
+                        style={[
+                          styles.strengthBar,
+                          {
+                            backgroundColor:
+                              index < passwordStrength
+                                ? passwordStrength <= 2
+                                  ? '#ff6b6b'
+                                  : passwordStrength === 3
+                                  ? '#ffd93d'
+                                  : '#6bcf7f'
+                                : '#e9ecef',
+                          },
+                        ]}
+                      />
+                    ))}
+                  </View>
+                  <Text
+                    style={[
+                      styles.strengthText,
+                      {
+                        color:
+                          passwordStrength <= 2
+                            ? '#ff6b6b'
+                            : passwordStrength === 3
+                            ? '#ffd93d'
+                            : '#6bcf7f',
+                      },
+                    ]}
+                  >
+                    {passwordStrength <= 2
+                      ? 'Weak'
+                      : passwordStrength === 3
+                      ? 'Fair'
+                      : 'Strong'}
+                  </Text>
+                </View>
+              )}
+
+              {/* Password Requirements */}
+              <View style={styles.requirementsContainer}>
+                <Text style={styles.requirementsTitle}>Requirements:</Text>
+                <PasswordRequirement
+                  label="At least 8 characters"
+                  met={password.length >= 8}
+                />
+                <PasswordRequirement
+                  label="Mix of uppercase and lowercase"
+                  met={/[a-z]/.test(password) && /[A-Z]/.test(password)}
+                />
+                <PasswordRequirement
+                  label="Contains numbers"
+                  met={/[0-9]/.test(password)}
+                />
+                <PasswordRequirement
+                  label="Contains special characters"
+                  met={/[^a-zA-Z0-9]/.test(password)}
+                />
+              </View>
             </View>
 
             <View style={styles.inputWrapper}>
               <Text style={styles.inputLabel}>Confirm Password *</Text>
-              <View style={styles.passwordInputContainer}>
+              <View style={[
+                styles.passwordInputContainer,
+                passwordMatchError && styles.passwordInputContainerError,
+              ]}>
                 <TextInput
                   style={styles.passwordInput}
                   placeholder="Confirm your password"
@@ -361,6 +475,12 @@ export default function PasswordSetupScreen() {
                   )}
                 </Pressable>
               </View>
+              {passwordMatchError && confirmPassword && (
+                <View style={styles.errorMessage}>
+                  <AlertCircle size={16} color="#ff6b6b" strokeWidth={2} />
+                  <Text style={styles.errorText}>Passwords do not match</Text>
+                </View>
+              )}
             </View>
           </View>
 
@@ -519,10 +639,10 @@ const styles = StyleSheet.create({
     fontSize: SCREEN_WIDTH < 375 ? 18 : 20,
     fontWeight: '700',
     color: '#1a1a1a',
-    marginBottom: 20,
+    marginBottom: 24,
   },
   inputWrapper: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
   inputLabel: {
     fontSize: SCREEN_WIDTH < 375 ? 13 : 14,
@@ -548,6 +668,10 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#f0f0f0',
   },
+  passwordInputContainerError: {
+    borderColor: '#ff6b6b',
+    backgroundColor: '#fff8f7',
+  },
   passwordInput: {
     flex: 1,
     padding: SCREEN_WIDTH < 375 ? 14 : 16,
@@ -557,6 +681,83 @@ const styles = StyleSheet.create({
   },
   eyeButton: {
     padding: 16,
+  },
+  // New styles for password strength
+  strengthContainer: {
+    marginTop: 12,
+    gap: 8,
+  },
+  strengthBars: {
+    flexDirection: 'row',
+    gap: 6,
+    height: 6,
+  },
+  strengthBar: {
+    flex: 1,
+    borderRadius: 3,
+  },
+  strengthText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  // Requirements section
+  requirementsContainer: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  requirementsTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  requirement: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  requirementIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  requirementCircle: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#ccc',
+  },
+  requirementLabel: {
+    fontSize: 13,
+    color: '#999',
+    fontWeight: '500',
+  },
+  requirementMet: {
+    color: '#6bcf7f',
+    fontWeight: '600',
+  },
+  // Error message
+  errorMessage: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#fff1f0',
+    borderRadius: 8,
+    gap: 8,
+  },
+  errorText: {
+    fontSize: 13,
+    color: '#ff6b6b',
+    fontWeight: '500',
   },
   button: {
     backgroundColor: '#667eea',
