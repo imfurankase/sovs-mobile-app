@@ -188,6 +188,9 @@ For automatic deployments on code changes:
 3. Set publish directory: `dist`
 4. Deployments will happen automatically on every push
 
+<<<<<<< HEAD
 
 
 
+=======
+>>>>>>> parent of 09e167b (Add blank lines to multiple files for improved readability)
