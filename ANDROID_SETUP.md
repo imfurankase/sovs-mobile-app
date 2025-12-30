@@ -76,10 +76,3 @@ Or use EAS Build:
 npm install -g eas-cli
 eas build --platform android
 ```
-
-<<<<<<< HEAD
-
-
-
-=======
->>>>>>> parent of 09e167b (Add blank lines to multiple files for improved readability)

@@ -187,10 +187,3 @@ For automatic deployments on code changes:
 2. Set build command: `npm run build:web`
 3. Set publish directory: `dist`
 4. Deployments will happen automatically on every push
-
-<<<<<<< HEAD
-
-
-
-=======
->>>>>>> parent of 09e167b (Add blank lines to multiple files for improved readability)

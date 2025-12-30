@@ -122,11 +122,3 @@ netlify logs
 # Open site dashboard
 netlify open
 ```
-
-
-<<<<<<< HEAD
-
-
-
-=======
->>>>>>> parent of 09e167b (Add blank lines to multiple files for improved readability)

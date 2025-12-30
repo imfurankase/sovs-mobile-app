@@ -27,10 +27,3 @@ const withAndroidCleartextTraffic = (config) => {
 };
 
 module.exports = withAndroidCleartextTraffic;
-
-<<<<<<< HEAD
-
-
-
-=======
->>>>>>> parent of 09e167b (Add blank lines to multiple files for improved readability)
