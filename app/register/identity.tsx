@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, Pressable, Alert, ActivityIndicator, Dimensions, ScrollView, Platform } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
@@ -142,18 +142,11 @@ export default function IdentityVerificationScreen() {
           }
         }
         
-        // If not approved or missing data, start polling
-        const interval = setInterval(() => {
-          pollSessionResults(callbackSessionId);
-        }, 3000);
-        setPollingInterval(interval);
+        // If not approved or missing data, let the polling effect handle it
+        // The polling effect will start when sessionId and isVerifying are set
       } catch (error) {
         console.error('[DIDIT] Error checking session on return:', error);
-        // Start polling as fallback
-        const interval = setInterval(() => {
-          pollSessionResults(callbackSessionId);
-        }, 3000);
-        setPollingInterval(interval);
+        // Polling effect will handle it
       }
     };
 
@@ -169,19 +162,89 @@ export default function IdentityVerificationScreen() {
   useEffect(() => {
     if (sessionId && isVerifying && !pollingInterval) {
       console.log('[DIDIT] Starting polling for session:', sessionId);
-      const interval = setInterval(() => {
-        pollSessionResults(sessionId);
-      }, 3000);
+      
+      // Create a polling function that doesn't depend on state
+      const poll = async () => {
+        try {
+          const result = await getDiditSessionResults(sessionId);
+          const status = result.status || result.decision_status;
+          
+          if (status === 'Approved' || status === 'Declined') {
+            if (pollingInterval) {
+              clearInterval(pollingInterval);
+              setPollingInterval(null);
+            }
+            
+            // Clear saved session
+            try {
+              await storage.removeItem(DIDIT_SESSION_KEY);
+            } catch (error) {
+              console.error('[DIDIT] Error clearing session:', error);
+            }
+            
+            setIsVerifying(false);
+            
+            if (status === 'Approved') {
+              const userData = result.user_data || {};
+              
+              if (!userData.first_name || !userData.last_name || !userData.date_of_birth) {
+                Alert.alert(
+                  t('registration.verificationFailed'),
+                  'Could not extract required information from the verification. Please try again.',
+                  [
+                    {
+                      text: t('registration.tryAgain'),
+                      onPress: () => {
+                        setSessionId(null);
+                      },
+                    },
+                  ]
+                );
+                return;
+              }
+
+              router.push({
+                pathname: '/register/password',
+                params: {
+                  sessionId: sessionId,
+                  firstName: userData.first_name,
+                  lastName: userData.last_name,
+                  dateOfBirth: userData.date_of_birth,
+                  documentNumber: userData.document_number || '',
+                  diditData: JSON.stringify(result),
+                },
+              });
+            } else {
+              Alert.alert(
+                t('registration.verificationFailed'),
+                'Your identity verification was declined. Please ensure your ID is valid and try again.',
+                [
+                  {
+                    text: t('registration.tryAgain'),
+                    onPress: () => {
+                      setSessionId(null);
+                    },
+                  },
+                ]
+              );
+            }
+          }
+        } catch (error: any) {
+          console.error('[DIDIT] Error polling session:', error);
+        }
+      };
+      
+      const interval = setInterval(poll, 3000);
       setPollingInterval(interval);
       
       // Poll immediately
-      setTimeout(() => pollSessionResults(sessionId), 500);
+      poll();
       
       return () => {
         if (interval) clearInterval(interval);
       };
     }
-  }, [sessionId, isVerifying, pollingInterval, pollSessionResults]);
+  }, [sessionId, isVerifying]);
   useEffect(() => {
     const handleUrl = async (event: { url: string }) => {
       const url = new URL(event.url);
@@ -214,81 +277,6 @@ export default function IdentityVerificationScreen() {
       }
     };
   }, [pollingInterval]);
-
-  // Poll for session results
-  const pollSessionResults = useCallback(async (sessionId: string) => {
-    try {
-      const result = await getDiditSessionResults(sessionId);
-      
-      // Check if verification is complete
-      const status = result.status || result.decision_status;
-      if (status === 'Approved' || status === 'Declined') {
-        if (pollingInterval) {
-          clearInterval(pollingInterval);
-          setPollingInterval(null);
-        }
-        
-        // Clear saved session
-        try {
-          await storage.removeItem(DIDIT_SESSION_KEY);
-        } catch (error) {
-          console.error('Error clearing session:', error);
-        }
-        
-        setIsVerifying(false);
-        
-        if (status === 'Approved') {
-          // Verification approved - proceed to password setup
-          const userData = result.user_data || {};
-          
-          if (!userData.first_name || !userData.last_name || !userData.date_of_birth) {
-            Alert.alert(
-              t('registration.verificationFailed'),
-              'Could not extract required information from the verification. Please try again.',
-              [
-                {
-                  text: t('registration.tryAgain'),
-                  onPress: () => {
-                    setSessionId(null);
-                  },
-                },
-              ]
-            );
-            return;
-          }
-
-          router.push({
-            pathname: '/register/password',
-            params: {
-              sessionId: sessionId,
-              firstName: userData.first_name,
-              lastName: userData.last_name,
-              dateOfBirth: userData.date_of_birth,
-              documentNumber: userData.document_number || '',
-              diditData: JSON.stringify(result),
-            },
-          });
-        } else {
-          // Verification declined
-          Alert.alert(
-            t('registration.verificationFailed'),
-            'Your identity verification was declined. Please ensure your ID is valid and try again.',
-            [
-              {
-                text: t('registration.tryAgain'),
-                onPress: () => {
-                  setSessionId(null);
-                },
-              },
-            ]
-          );
-        }
-      }
-    } catch (error: any) {
-      console.error('Error polling session:', error);
-      // Continue polling on error (session might not be ready yet)
-    }
-  }, [pollingInterval, t, router]);
 
   const handleStartVerification = async () => {
     try {
