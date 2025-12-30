@@ -15,40 +15,53 @@ const DIDIT_SESSION_KEY = '@didit_verification_session';
 const storage = {
   async getItem(key: string) {
     try {
-      if (Platform.OS === 'web') {
-        return typeof window !== 'undefined' ? localStorage.getItem(key) : null;
-      } else {
-        return await AsyncStorage.getItem(key);
+      // Try localStorage first (web)
+      if (typeof localStorage !== 'undefined') {
+        const value = localStorage.getItem(key);
+        if (value) {
+          console.log(`[Storage] Retrieved from localStorage: ${key}`);
+          return value;
+        }
       }
+      // Fall back to AsyncStorage (mobile)
+      const value = await AsyncStorage.getItem(key);
+      if (value) {
+        console.log(`[Storage] Retrieved from AsyncStorage: ${key}`);
+      }
+      return value;
     } catch (error) {
-      console.error('Storage getItem error:', error);
+      console.error('[Storage] getItem error:', error);
       return null;
     }
   },
   async setItem(key: string, value: string) {
     try {
-      if (Platform.OS === 'web') {
-        if (typeof window !== 'undefined') {
-          localStorage.setItem(key, value);
-        }
-      } else {
-        await AsyncStorage.setItem(key, value);
+      // Try localStorage first (web)
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(key, value);
+        console.log(`[Storage] Saved to localStorage: ${key} = ${value.substring(0, 50)}...`);
+        return;
       }
+      // Fall back to AsyncStorage (mobile)
+      await AsyncStorage.setItem(key, value);
+      console.log(`[Storage] Saved to AsyncStorage: ${key} = ${value.substring(0, 50)}...`);
     } catch (error) {
-      console.error('Storage setItem error:', error);
+      console.error('[Storage] setItem error:', error);
     }
   },
   async removeItem(key: string) {
     try {
-      if (Platform.OS === 'web') {
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem(key);
-        }
-      } else {
-        await AsyncStorage.removeItem(key);
+      // Try localStorage first (web)
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem(key);
+        console.log(`[Storage] Removed from localStorage: ${key}`);
+        return;
       }
+      // Fall back to AsyncStorage (mobile)
+      await AsyncStorage.removeItem(key);
+      console.log(`[Storage] Removed from AsyncStorage: ${key}`);
     } catch (error) {
-      console.error('Storage removeItem error:', error);
+      console.error('[Storage] removeItem error:', error);
     }
   },
 };
@@ -73,26 +86,23 @@ export default function IdentityVerificationScreen() {
   useEffect(() => {
     const restoreSession = async () => {
       try {
+        console.log('[DIDIT] Checking for saved session...');
         const savedSession = await storage.getItem(DIDIT_SESSION_KEY);
         if (savedSession) {
           const { sessionId: savedSessionId } = JSON.parse(savedSession);
           if (savedSessionId) {
-            console.log('Restored DIDIT session from storage:', savedSessionId);
+            console.log('[DIDIT] Restored DIDIT session from storage:', savedSessionId);
             setSessionId(savedSessionId);
             setIsVerifying(true);
             
-            // Start polling immediately
-            const interval = setInterval(() => {
-              pollSessionResults(savedSessionId);
-            }, 3000);
-            setPollingInterval(interval);
-            
-            // Poll immediately
-            setTimeout(() => pollSessionResults(savedSessionId), 1000);
+            // Start polling immediately with a ref to avoid closure issues
+            console.log('[DIDIT] Starting polling for session:', savedSessionId);
           }
+        } else {
+          console.log('[DIDIT] No saved session found');
         }
       } catch (error) {
-        console.error('Error restoring session:', error);
+        console.error('[DIDIT] Error restoring session:', error);
       }
     };
 
@@ -138,7 +148,7 @@ export default function IdentityVerificationScreen() {
         }, 3000);
         setPollingInterval(interval);
       } catch (error) {
-        console.error('Error checking session on return:', error);
+        console.error('[DIDIT] Error checking session on return:', error);
         // Start polling as fallback
         const interval = setInterval(() => {
           pollSessionResults(callbackSessionId);
@@ -150,11 +160,28 @@ export default function IdentityVerificationScreen() {
     // Check for params from URL (web callback - when DIDIT redirects back)
     const sessionIdFromParams = params.session_id as string | undefined;
     if (sessionIdFromParams && !sessionId) {
+      console.log('[DIDIT] Found session_id in URL params:', sessionIdFromParams);
       processSessionCallback(sessionIdFromParams);
     }
   }, [params.session_id, sessionId]);
 
-  // Handle deep links for mobile
+  // Start polling when sessionId is set (from restoration or new verification)
+  useEffect(() => {
+    if (sessionId && isVerifying && !pollingInterval) {
+      console.log('[DIDIT] Starting polling for session:', sessionId);
+      const interval = setInterval(() => {
+        pollSessionResults(sessionId);
+      }, 3000);
+      setPollingInterval(interval);
+      
+      // Poll immediately
+      setTimeout(() => pollSessionResults(sessionId), 500);
+      
+      return () => {
+        if (interval) clearInterval(interval);
+      };
+    }
+  }, [sessionId, isVerifying, pollingInterval, pollSessionResults]);
   useEffect(() => {
     const handleUrl = async (event: { url: string }) => {
       const url = new URL(event.url);
@@ -267,6 +294,7 @@ export default function IdentityVerificationScreen() {
     try {
       setIsCreatingSession(true);
       const returnUrl = Linking.createURL('/register/identity');
+      console.log('[DIDIT] Creating session with returnUrl:', returnUrl);
       
       // Create Didit session
       const session = await createDiditSession(
@@ -281,12 +309,16 @@ export default function IdentityVerificationScreen() {
       }
 
       const sessionId = session.session_id;
+      console.log('[DIDIT] Session created with ID:', sessionId);
       
       // Save session to storage so it persists across page reloads
       try {
-        await storage.setItem(DIDIT_SESSION_KEY, JSON.stringify({ sessionId, createdAt: Date.now() }));
+        const sessionData = JSON.stringify({ sessionId, createdAt: Date.now() });
+        console.log('[DIDIT] About to save to storage:', sessionData);
+        await storage.setItem(DIDIT_SESSION_KEY, sessionData);
+        console.log('[DIDIT] Session saved successfully');
       } catch (error) {
-        console.error('Error saving session:', error);
+        console.error('[DIDIT] Error saving session:', error);
       }
       
       setSessionId(sessionId);
