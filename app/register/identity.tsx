@@ -313,35 +313,37 @@ export default function IdentityVerificationScreen() {
       setIsCreatingSession(false);
       setIsVerifying(true);
 
-      // Start polling for results as soon as the session URL opens
-      let activeInterval: NodeJS.Timeout | null = null;
-      if (sessionId) {
-        activeInterval = setInterval(() => {
-          pollSessionResults(sessionId);
-        }, 3000); // Poll every 3 seconds
-        setPollingInterval(activeInterval);
-        
-        // Also poll immediately
-        setTimeout(() => pollSessionResults(sessionId), 2000);
-      }
-
-      // Open Didit verification URL and expect to return via deep link
-      const result = await WebBrowser.openAuthSessionAsync(session.url, returnUrl);
-
-      // If the user cancels the auth session, stop verifying so they can retry
-      if (result.type === 'cancel' || result.type === 'dismiss') {
-        if (activeInterval) {
-          clearInterval(activeInterval);
-        }
-        setPollingInterval(null);
-        setIsVerifying(false);
-        // Clear saved session
-        try {
+      // Open Didit verification URL
+      // For web, open in a new window/tab so the current page stays loaded and can handle the redirect back
+      // For mobile, use WebBrowser which will open in a browser and return via deep link
+      if (Platform.OS === 'web' || typeof window !== 'undefined') {
+        // On web, open DIDIT in a new window
+        const diditWindow = window.open(session.url, '_blank');
+        if (!diditWindow) {
+          Alert.alert(
+            t('common.error'),
+            'Please allow popups for this site to continue with verification',
+          );
+          setIsVerifying(false);
           await storage.removeItem(DIDIT_SESSION_KEY);
-        } catch (error) {
-          console.error('Error clearing session:', error);
         }
-        return;
+        // The polling effect will handle checking the status
+        // When DIDIT redirects back, it will reload this page with the session restored from localStorage
+      } else {
+        // On mobile, open in browser and expect to return via deep link
+        const result = await WebBrowser.openAuthSessionAsync(session.url, returnUrl);
+
+        // If the user cancels the auth session, stop verifying so they can retry
+        if (result.type === 'cancel' || result.type === 'dismiss') {
+          setIsVerifying(false);
+          // Clear saved session
+          try {
+            await storage.removeItem(DIDIT_SESSION_KEY);
+          } catch (error) {
+            console.error('[DIDIT] Error clearing session:', error);
+          }
+          return;
+        }
       }
     } catch (error: any) {
       setIsCreatingSession(false);
