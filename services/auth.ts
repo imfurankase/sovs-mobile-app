@@ -12,12 +12,17 @@ export async function registerUser(data: {
   surname: string;
   dateOfBirth: string;
   password?: string;
+  nationalId?: string;
 }): Promise<{ success: boolean; userId?: string; error?: string }> {
   try {
     // Step 1: Create user in Supabase Auth FIRST to get the UUID
     // Password is required (user sets it during registration)
     if (!data.password) {
       return { success: false, error: 'Password is required' };
+    }
+
+    if (!data.nationalId) {
+      return { success: false, error: 'national_id (document number) is required. Please restart verification.' };
     }
     
     // Use email if available, otherwise create a placeholder email for phone-based auth
@@ -136,6 +141,7 @@ export async function registerUser(data: {
           name: data.name,
           surname: data.surname,
           date_of_birth: data.dateOfBirth,
+          national_id: data.nationalId,
           role_id: 1, // Assign voter role
         }),
       });

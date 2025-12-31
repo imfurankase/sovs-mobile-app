@@ -199,6 +199,7 @@ export default function PasswordSetupScreen() {
         name: userData.firstName,
         surname: userData.lastName,
         dateOfBirth: userData.dateOfBirth,
+        nationalId: userData.documentNumber,
         password: password, // Now we have a real password from user
       });
 
