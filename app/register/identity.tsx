@@ -126,9 +126,9 @@ export default function IdentityVerificationScreen() {
           const userData = result.user_data || {};
           
           if (userData.first_name && userData.last_name && userData.date_of_birth) {
-            // Navigate directly to password page
+            // Navigate to confirmation page
             router.push({
-              pathname: '/register/password',
+              pathname: '/register/confirmation',
               params: {
                 sessionId: callbackSessionId,
                 firstName: userData.first_name,
@@ -204,7 +204,7 @@ export default function IdentityVerificationScreen() {
               }
 
               router.push({
-                pathname: '/register/password',
+                pathname: '/register/confirmation',
                 params: {
                   sessionId: sessionId,
                   firstName: userData.first_name,

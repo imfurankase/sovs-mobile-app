@@ -2,7 +2,39 @@ import { supabase, FUNCTIONS_BASE_URL } from './supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 /**
+ * Validate national_id exists in government_db before creating auth user
+ */
+export async function validateNationalId(nationalId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (!nationalId) {
+      return { success: false, error: 'national_id is required' };
+    }
+
+    const response = await fetch(`${FUNCTIONS_BASE_URL}/validate-national-id`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        national_id: nationalId,
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      return { success: false, error: result.error || 'Failed to validate national_id' };
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Failed to validate national_id' };
+  }
+}
+
+/**
  * Register a new user with Supabase Auth and add to users table
+ * Password is auto-generated; user will use OTP for login
  */
 export async function registerUser(data: {
   phoneNumber: string;
@@ -10,28 +42,30 @@ export async function registerUser(data: {
   name: string;
   surname: string;
   dateOfBirth: string;
-  password?: string;
   nationalId?: string;
 }): Promise<{ success: boolean; userId?: string; error?: string }> {
   try {
-    // Step 1: Create user in Supabase Auth FIRST to get the UUID
-    // Password is required (user sets it during registration)
-    if (!data.password) {
-      return { success: false, error: 'Password is required' };
-    }
-
     if (!data.nationalId) {
       return { success: false, error: 'national_id (document number) is required. Please restart verification.' };
+    }
+
+    // Validate national_id exists in government_db BEFORE creating auth user
+    const validationResult = await validateNationalId(data.nationalId);
+    if (!validationResult.success) {
+      return { success: false, error: validationResult.error };
     }
     
     // Use email if available, otherwise create a placeholder email for phone-based auth
     const authEmail = data.email || `${data.phoneNumber.replace(/[^0-9]/g, '')}@sovs.local`;
 
-    // Create user in Supabase Auth with email and password
+    // Generate a temporary password (user will use OTP for login)
+    const tempPassword = Math.random().toString(36).slice(-16) + 'Aa1!';
+
+    // Create user in Supabase Auth with email and auto-generated password
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: authEmail,
-      password: data.password,
-      phone: data.phoneNumber, // Also set phone number for OTP login
+      password: tempPassword,
+      phone: data.phoneNumber,
       options: {
         data: {
           name: `${data.name} ${data.surname}`,
@@ -49,7 +83,7 @@ export async function registerUser(data: {
 
         const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
           email: authEmail,
-          password: data.password,
+          password: tempPassword,
         });
 
         if (signInError || !signInData?.user?.id) {
