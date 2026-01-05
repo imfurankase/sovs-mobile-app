@@ -72,6 +72,7 @@ export const usersAPI = {
     date_of_birth: string;
     password_hash?: string;
     two_factor_secret?: string;
+    sessionid?: string;
     status?: 'pending' | 'verified' | 'suspended';
   }) => {
     return callFunction('users', {

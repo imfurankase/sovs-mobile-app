@@ -132,6 +132,7 @@ export default function ConfirmationScreen() {
         surname: userData.lastName,
         dateOfBirth: userData.dateOfBirth,
         nationalId: userData.documentNumber,
+        sessionId: userData.sessionId,
       });
 
       if (result.success) {

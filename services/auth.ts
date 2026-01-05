@@ -44,6 +44,7 @@ export async function registerUser(data: {
   surname: string;
   dateOfBirth: string;
   nationalId?: string;
+  sessionId?: string;
 }): Promise<{ success: boolean; userId?: string; error?: string }> {
   try {
     if (!data.nationalId) {
@@ -126,6 +127,7 @@ export async function registerUser(data: {
           surname: data.surname,
           date_of_birth: data.dateOfBirth,
           national_id: data.nationalId,
+          sessionid: data.sessionId,
           role_id: 1, // Assign voter role
         }),
       });
