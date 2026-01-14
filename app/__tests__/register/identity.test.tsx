@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
-import { Alert, Pressable } from 'react-native';
+import { Alert } from 'react-native';
 import IdentityVerificationScreen from '@/app/register/identity';
 
 /* -------------------- ROUTER -------------------- */
@@ -17,7 +17,7 @@ jest.mock('expo-web-browser', () => ({
   maybeCompleteAuthSession: jest.fn(),
 }));
 
-/* -------------------- LINKING (✅ FIX HERE) -------------------- */
+/* -------------------- LINKING -------------------- */
 jest.mock('expo-linking', () => ({
   createURL: jest.fn(() => 'test://callback'),
   getInitialURL: jest.fn(() => Promise.resolve(null)),
@@ -63,23 +63,34 @@ describe('IdentityVerificationScreen', () => {
     expect(getByText('Start Verification')).toBeTruthy();
   });
 
-it('toggles language when language button is pressed', () => {
-  const { getByTestId } = render(<IdentityVerificationScreen />);
+  it('toggles language when language button is pressed', () => {
+    const { getByTestId } = render(<IdentityVerificationScreen />);
 
-  fireEvent.press(getByTestId('language-toggle'));
+    fireEvent.press(getByTestId('language-toggle'));
 
-  expect(mockSetLanguage).toHaveBeenCalledTimes(1);
-});
-
+    expect(mockSetLanguage).toHaveBeenCalledTimes(1);
+  });
 
   it('starts verification when Start Verification button is pressed', async () => {
     (createDiditSession as jest.Mock).mockResolvedValueOnce({
-      success: true,
-      url: 'https://didit.test',
       session_id: 'session123',
+      status: 'Pending',
+      url: 'https://didit.test',
     });
 
-    const { getByText } = render(<IdentityVerificationScreen />);
+    const { getByPlaceholderText, getByText } = render(
+      <IdentityVerificationScreen />
+    );
+
+    fireEvent.changeText(
+      getByPlaceholderText('Enter your phone number'),
+      '1234567890'
+    );
+
+    fireEvent.changeText(
+      getByPlaceholderText('Enter your email'),
+      'test@example.com'
+    );
 
     fireEvent.press(getByText('Start Verification'));
 
@@ -89,13 +100,25 @@ it('toggles language when language button is pressed', () => {
   });
 
   it('shows error alert if session creation fails', async () => {
-    jest.spyOn(Alert, 'alert');
+    jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
 
     (createDiditSession as jest.Mock).mockRejectedValueOnce(
-      new Error('Failed'),
+      new Error('Failed')
     );
 
-    const { getByText } = render(<IdentityVerificationScreen />);
+    const { getByPlaceholderText, getByText } = render(
+      <IdentityVerificationScreen />
+    );
+
+    fireEvent.changeText(
+      getByPlaceholderText('Enter your phone number'),
+      '1234567890'
+    );
+
+    fireEvent.changeText(
+      getByPlaceholderText('Enter your email'),
+      'test@example.com'
+    );
 
     fireEvent.press(getByText('Start Verification'));
 
